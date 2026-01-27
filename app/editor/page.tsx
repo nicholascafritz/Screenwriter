@@ -6,8 +6,8 @@ import { useEditorStore } from '@/lib/store/editor';
 import { useChatStore } from '@/lib/store/chat';
 import { useProjectStore } from '@/lib/store/project';
 import { debounce } from '@/lib/utils';
-import { getActiveProjectId } from '@/lib/store/persistence';
 import { processFiles } from '@/lib/upload/processor';
+import AuthGate from '@/components/auth/AuthGate';
 import ScreenplayEditor from '@/components/editor/ScreenplayEditor';
 import DiffViewer from '@/components/editor/DiffViewer';
 import ScreenplayPreview from '@/components/editor/ScreenplayPreview';
@@ -83,24 +83,11 @@ export default function EditorPage() {
   const openProject = useProjectStore((s) => s.openProject);
 
   // -- Project context guard ------------------------------------------------
-  // If there's no active project, try to restore from localStorage.
-  // If that also fails, redirect to the home page.
+  // If there's no active project, redirect to the home page.
   useEffect(() => {
-    if (activeProjectId) return;
-
-    // Try restoring from localStorage.
-    const savedId = getActiveProjectId();
-    if (savedId) {
-      useProjectStore.getState().openProject(savedId).then((success) => {
-        if (!success) {
-          router.replace('/');
-        }
-      });
-      return;
+    if (!activeProjectId) {
+      router.replace('/');
     }
-
-    // No project to load — redirect home.
-    router.replace('/');
   }, [activeProjectId, router]);
 
   // -- Auto-save (1.5s debounce) -------------------------------------------
@@ -125,13 +112,13 @@ export default function EditorPage() {
       const processed = await processFiles(files);
       if (processed.length === 0) return;
       // Save current project first.
-      saveCurrentProject();
+      await saveCurrentProject();
       // Create a new project from the first dropped file and open it.
       const file = processed[0];
-      createProject(file.name, file.content);
+      await createProject(file.name, file.content);
       // For additional files, create projects but don't navigate away.
       for (let i = 1; i < processed.length; i++) {
-        createProject(processed[i].name, processed[i].content);
+        await createProject(processed[i].name, processed[i].content);
       }
       // Re-open the first dropped file's project (createProject already set it).
       // No need to re-open since createProject sets activeProjectId.
@@ -237,6 +224,7 @@ export default function EditorPage() {
   }
 
   return (
+    <AuthGate>
     <FileDropZone onFiles={handleDropFiles} className="h-screen">
       <div className="flex h-screen flex-col bg-background">
         {/* Top Bar */}
@@ -515,5 +503,6 @@ export default function EditorPage() {
         </footer>
       </div>
     </FileDropZone>
+    </AuthGate>
   );
 }

@@ -10,7 +10,8 @@ import type {
   LocationProfile,
   BeatSheetEntry,
 } from './story-bible-types';
-import { loadStoryBible, saveStoryBible, deleteStoryBible } from './story-bible-persistence';
+import { loadStoryBible, saveStoryBible, deleteStoryBible } from '@/lib/firebase/firestore-story-bible-persistence';
+import { useProjectStore } from './project';
 
 // ---------------------------------------------------------------------------
 // Save the Cat Beat Sheet Template
@@ -69,9 +70,9 @@ export interface StoryBibleState {
   projectId: string | null;
 
   // Lifecycle
-  loadForProject: (projectId: string) => void;
+  loadForProject: (projectId: string) => Promise<void>;
   persist: () => void;
-  deleteForProject: (projectId: string) => void;
+  deleteForProject: (projectId: string) => Promise<void>;
   clear: () => void;
 
   // Overview
@@ -130,23 +131,30 @@ export const useStoryBibleStore = create<StoryBibleState>((set, get) => ({
   bible: null,
   projectId: null,
 
-  loadForProject: (projectId) => {
-    let bible = loadStoryBible(projectId);
+  loadForProject: async (projectId) => {
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    let bible = await loadStoryBible(userId, projectId);
     if (!bible) {
       bible = createDefaultBible(projectId);
-      saveStoryBible(bible);
+      saveStoryBible(userId, projectId, bible);
     }
     set({ bible, projectId });
   },
 
   persist: () => {
-    const { bible } = get();
-    if (!bible) return;
-    saveStoryBible(bible);
+    const { bible, projectId } = get();
+    if (!bible || !projectId) return;
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    // Fire-and-forget async write.
+    saveStoryBible(userId, projectId, bible);
   },
 
-  deleteForProject: (projectId) => {
-    deleteStoryBible(projectId);
+  deleteForProject: async (projectId) => {
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    await deleteStoryBible(userId, projectId);
   },
 
   clear: () => {

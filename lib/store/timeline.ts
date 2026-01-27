@@ -8,7 +8,8 @@ import {
   loadTimelineEntries,
   saveTimelineEntries,
   deleteTimelineEntries,
-} from './changelog-persistence';
+} from '@/lib/firebase/firestore-changelog-persistence';
+import { useProjectStore } from './project';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,13 +69,13 @@ export interface TimelineState {
   clear: () => void;
 
   /** Load timeline entries for a project from persistent storage. */
-  loadForProject: (projectId: string) => void;
+  loadForProject: (projectId: string) => Promise<void>;
 
   /** Persist current timeline entries to storage. */
   persist: () => void;
 
   /** Delete all persisted timeline entries for a project. */
-  deleteForProject: (projectId: string) => void;
+  deleteForProject: (projectId: string) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,8 +175,10 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     set({ entries: [], currentIndex: -1, projectId: null });
   },
 
-  loadForProject: (projectId: string) => {
-    const entries = loadTimelineEntries(projectId);
+  loadForProject: async (projectId: string) => {
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    const entries = await loadTimelineEntries(userId, projectId);
     set({
       projectId,
       entries,
@@ -186,10 +189,15 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   persist: () => {
     const { projectId, entries } = get();
     if (!projectId) return;
-    saveTimelineEntries(projectId, entries);
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    // Fire-and-forget async write.
+    saveTimelineEntries(userId, projectId, entries);
   },
 
-  deleteForProject: (projectId: string) => {
-    deleteTimelineEntries(projectId);
+  deleteForProject: async (projectId: string) => {
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    await deleteTimelineEntries(userId, projectId);
   },
 }));

@@ -8,14 +8,15 @@
 import { create } from 'zustand';
 import { generateId } from '@/lib/utils';
 import type { SerializedChatMessage } from './types';
-import type { ChatSessionSummary } from './chat-persistence';
+import type { ChatSessionSummary } from '@/lib/firebase/firestore-chat-persistence';
 import {
   loadSessionSummaries,
   loadSession,
   saveSession,
   deleteSessionById,
   type ChatSession,
-} from './chat-persistence';
+} from '@/lib/firebase/firestore-chat-persistence';
+import { useProjectStore } from './project';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -139,7 +140,12 @@ function nextMessageId(): string {
   return `msg-${_messageIdCounter}`;
 }
 
-/** Serialize messages for IndexedDB storage (filter streaming). */
+/** Get the authenticated user ID from the project store. */
+function getUserId(): string | null {
+  return useProjectStore.getState().userId;
+}
+
+/** Serialize messages for Firestore storage (filter streaming). */
 function serializeMessages(messages: ChatMessage[]): SerializedChatMessage[] {
   return messages
     .filter((m) => !m.isStreaming)
@@ -239,14 +245,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // -- Multi-session actions ------------------------------------------------
 
   loadSessionsForProject: async (projectId: string) => {
+    const userId = getUserId();
+    if (!userId) return;
+
     set({ activeProjectId: projectId });
 
-    const summaries = await loadSessionSummaries(projectId);
+    const summaries = await loadSessionSummaries(userId, projectId);
 
     if (summaries.length === 0) {
       // Create a default session
       const sessionId = await get().createSession(projectId, 'New Chat');
-      const newSummaries = await loadSessionSummaries(projectId);
+      const newSummaries = await loadSessionSummaries(userId, projectId);
       set({ chatSessions: newSummaries, activeChatId: sessionId });
       return;
     }
@@ -257,7 +266,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ chatSessions: summaries });
 
     // Load messages for the latest session
-    const session = await loadSession(latestId);
+    const session = await loadSession(userId, projectId, latestId);
     if (session) {
       const restored: ChatMessage[] = session.messages.map((m) => ({
         ...m,
@@ -278,6 +287,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     parentMessageIndex: number | null = null,
     branchSummary: string | null = null,
   ) => {
+    const userId = getUserId();
+    if (!userId) throw new Error('No authenticated user');
+
     const id = generateId();
     const now = Date.now();
 
@@ -293,16 +305,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
       updatedAt: now,
     };
 
-    await saveSession(session);
+    await saveSession(userId, projectId, session);
 
     // Refresh summaries
-    const summaries = await loadSessionSummaries(projectId);
+    const summaries = await loadSessionSummaries(userId, projectId);
     set({ chatSessions: summaries });
 
     return id;
   },
 
   switchSession: async (sessionId: string) => {
+    const userId = getUserId();
+    if (!userId) return;
+
     const { activeChatId, activeProjectId } = get();
 
     // Persist current session before switching
@@ -310,8 +325,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await get().persistCurrentSession();
     }
 
+    if (!activeProjectId) return;
+
     // Load the target session
-    const session = await loadSession(sessionId);
+    const session = await loadSession(userId, activeProjectId, sessionId);
     if (!session) return;
 
     const restored: ChatMessage[] = session.messages.map((m) => ({
@@ -324,56 +341,64 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   renameSession: async (sessionId: string, name: string) => {
-    const session = await loadSession(sessionId);
+    const userId = getUserId();
+    if (!userId) return;
+
+    const { activeProjectId } = get();
+    if (!activeProjectId) return;
+
+    const session = await loadSession(userId, activeProjectId, sessionId);
     if (!session) return;
 
     session.name = name;
     session.updatedAt = Date.now();
-    await saveSession(session);
+    await saveSession(userId, activeProjectId, session);
 
     // Refresh summaries
-    const { activeProjectId } = get();
-    if (activeProjectId) {
-      const summaries = await loadSessionSummaries(activeProjectId);
-      set({ chatSessions: summaries });
-    }
+    const summaries = await loadSessionSummaries(userId, activeProjectId);
+    set({ chatSessions: summaries });
   },
 
   deleteSession: async (sessionId: string) => {
-    const { activeChatId, activeProjectId, chatSessions } = get();
+    const userId = getUserId();
+    if (!userId) return;
 
-    await deleteSessionById(sessionId);
+    const { activeChatId, activeProjectId } = get();
+    if (!activeProjectId) return;
 
-    if (activeProjectId) {
-      const summaries = await loadSessionSummaries(activeProjectId);
-      set({ chatSessions: summaries });
+    await deleteSessionById(userId, activeProjectId, sessionId);
 
-      // If we deleted the active session, switch to another
-      if (activeChatId === sessionId) {
-        if (summaries.length > 0) {
-          await get().switchSession(summaries[0].id);
-        } else {
-          // Create a new default session
-          const newId = await get().createSession(activeProjectId, 'New Chat');
-          set({ activeChatId: newId, messages: [] });
-        }
+    const summaries = await loadSessionSummaries(userId, activeProjectId);
+    set({ chatSessions: summaries });
+
+    // If we deleted the active session, switch to another
+    if (activeChatId === sessionId) {
+      if (summaries.length > 0) {
+        await get().switchSession(summaries[0].id);
+      } else {
+        // Create a new default session
+        const newId = await get().createSession(activeProjectId, 'New Chat');
+        set({ activeChatId: newId, messages: [] });
       }
     }
   },
 
   persistCurrentSession: async () => {
+    const userId = getUserId();
+    if (!userId) return;
+
     const { activeChatId, activeProjectId, messages } = get();
     if (!activeChatId || !activeProjectId) return;
 
-    const session = await loadSession(activeChatId);
+    const session = await loadSession(userId, activeProjectId, activeChatId);
     if (!session) return;
 
     session.messages = serializeMessages(messages);
     session.updatedAt = Date.now();
-    await saveSession(session);
+    await saveSession(userId, activeProjectId, session);
 
     // Refresh summaries so message counts update
-    const summaries = await loadSessionSummaries(activeProjectId);
+    const summaries = await loadSessionSummaries(userId, activeProjectId);
     set({ chatSessions: summaries });
   },
 

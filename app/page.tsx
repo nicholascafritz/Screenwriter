@@ -8,12 +8,15 @@ import { processFiles } from '@/lib/upload/processor';
 import { ACCEPTED_FILE_TYPES } from '@/lib/upload/processor';
 import ProjectCard from '@/components/project/ProjectCard';
 import FileDropZone from '@/components/upload/FileDropZone';
+import AuthGate from '@/components/auth/AuthGate';
+import { useAuth } from '@/lib/firebase/auth-context';
 import { Button } from '@/components/ui/button';
-import { FilePlus, FileText, Upload, Clapperboard } from 'lucide-react';
+import { FilePlus, FileText, Upload, Clapperboard, LogOut } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, signOut } = useAuth();
 
   const projects = useProjectStore((s) => s.projects);
   const createProject = useProjectStore((s) => s.createProject);
@@ -30,13 +33,13 @@ export default function HomePage() {
 
   // -- Handlers -------------------------------------------------------------
 
-  const handleNewProject = () => {
-    createProject();
+  const handleNewProject = async () => {
+    await createProject();
     router.push('/editor');
   };
 
-  const handleSampleProject = () => {
-    createProject('The Last Draft', SAMPLE_SCRIPT);
+  const handleSampleProject = async () => {
+    await createProject('The Last Draft', SAMPLE_SCRIPT);
     router.push('/editor');
   };
 
@@ -66,7 +69,7 @@ export default function HomePage() {
       // Open the last one (most recently processed).
       let lastId: string | undefined;
       for (const file of processed) {
-        lastId = createProject(file.name, file.content);
+        lastId = await createProject(file.name, file.content);
       }
 
       if (lastId) {
@@ -93,8 +96,20 @@ export default function HomePage() {
   const hasProjects = projects.length > 0;
 
   return (
+    <AuthGate>
     <FileDropZone onFiles={handleDropFiles} className="min-h-screen">
       <div className="flex min-h-screen flex-col items-center p-8">
+        {/* User bar */}
+        <div className="absolute top-4 right-6 flex items-center gap-3">
+          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+            {user?.email}
+          </span>
+          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => signOut()}>
+            <LogOut className="h-3 w-3" />
+            Sign Out
+          </Button>
+        </div>
+
         {/* Header */}
         <div className="flex flex-col items-center gap-4 mt-12 mb-10">
           <div className="flex items-center gap-3">
@@ -195,5 +210,6 @@ export default function HomePage() {
         </div>
       </div>
     </FileDropZone>
+    </AuthGate>
   );
 }

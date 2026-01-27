@@ -10,20 +10,16 @@ import {
   loadProject,
   saveProject,
   deleteProject as deleteProjectFromStorage,
-  getActiveProjectId,
-  setActiveProjectId,
-} from './persistence';
+} from '@/lib/firebase/firestore-persistence';
+import { deleteSessionsForProject } from '@/lib/firebase/firestore-chat-persistence';
+import { deleteTimelineEntries } from '@/lib/firebase/firestore-changelog-persistence';
+import { deleteCommentsForProject } from '@/lib/firebase/firestore-comment-persistence';
+import { deleteStoryBible } from '@/lib/firebase/firestore-story-bible-persistence';
 import { useEditorStore } from './editor';
 import { useChatStore } from './chat';
 import { useTimelineStore } from './timeline';
 import { useCommentStore } from './comments';
 import { useStoryBibleStore } from './story-bible';
-import {
-  loadSessionsForProject as loadChatSessionsForProject,
-  saveSession as saveChatSession,
-  deleteSessionsForProject,
-  type ChatSession,
-} from './chat-persistence';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +38,9 @@ export interface ProjectState {
   /** Lightweight project summaries for the home-page grid. */
   projects: ProjectSummary[];
 
+  /** The authenticated user's ID (set by auth context). */
+  userId: string | null;
+
   // -- Actions --------------------------------------------------------------
 
   /** Update the project name. */
@@ -50,32 +49,34 @@ export interface ProjectState {
   /** Update the active voice profile. */
   setVoiceId: (id: string) => void;
 
-  /** Refresh the project list from localStorage. */
-  loadProjectList: () => void;
+  /** Set the authenticated user ID. */
+  setUserId: (id: string | null) => void;
+
+  /** Refresh the project list from Firestore. */
+  loadProjectList: () => Promise<void>;
 
   /**
    * Create a new project with optional initial content.
    * Sets it as the active project and populates the editor.
    * Returns the new project ID.
    */
-  createProject: (name?: string, content?: string) => string;
+  createProject: (name?: string, content?: string) => Promise<string>;
 
   /**
    * Open an existing project by ID.
-   * Loads from localStorage, migrates legacy chatHistory to IndexedDB
-   * if needed, and loads chat sessions.
+   * Loads from Firestore and loads related data (chat, timeline, etc.).
    * Returns `true` if the project was found and loaded.
    */
   openProject: (id: string) => Promise<boolean>;
 
   /**
-   * Save the current project state to localStorage.
-   * Chat messages are persisted to IndexedDB separately.
+   * Save the current project state to Firestore.
+   * Chat messages are persisted separately.
    */
-  saveCurrentProject: () => void;
+  saveCurrentProject: () => Promise<void>;
 
-  /** Rename a project (updates localStorage and in-memory list). */
-  renameProject: (id: string, newName: string) => void;
+  /** Rename a project (updates Firestore and in-memory list). */
+  renameProject: (id: string, newName: string) => Promise<void>;
 
   /** Delete a project and clear active state if it was the current one. */
   removeProject: (id: string) => Promise<void>;
@@ -84,7 +85,7 @@ export interface ProjectState {
    * Duplicate a project.  Creates a copy with a new ID and "(Copy)" suffix.
    * Returns the new project ID.
    */
-  duplicateProject: (id: string) => string | null;
+  duplicateProject: (id: string) => Promise<string | null>;
 
   /** Reset all stores (editor, chat, timeline) to their initial states. */
   resetStores: () => void;
@@ -115,6 +116,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   voiceId: 'default',
   activeProjectId: null,
   projects: [],
+  userId: null,
 
   // -- Actions --------------------------------------------------------------
 
@@ -126,14 +128,26 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ voiceId: id });
   },
 
-  loadProjectList: () => {
-    const projects = loadProjectIndex();
-    // Sort by most recently updated first.
-    projects.sort((a, b) => b.updatedAt - a.updatedAt);
+  setUserId: (id: string | null) => {
+    set({ userId: id });
+    if (!id) {
+      get().resetStores();
+      set({ activeProjectId: null, projects: [] });
+    }
+  },
+
+  loadProjectList: async () => {
+    const { userId } = get();
+    if (!userId) return;
+    const projects = await loadProjectIndex(userId);
+    // Already sorted by updatedAt desc from Firestore query.
     set({ projects });
   },
 
-  createProject: (name?: string, content?: string) => {
+  createProject: async (name?: string, content?: string) => {
+    const { userId } = get();
+    if (!userId) throw new Error('No authenticated user');
+
     const id = generateId();
     const now = Date.now();
     const projectName = name ?? 'Untitled Screenplay';
@@ -155,7 +169,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Set the baseline for undo/redo diffing.
     useEditorStore.setState({ _lastCommittedContent: projectContent });
 
-    // Persist immediately (without chatHistory -- chats go to IndexedDB).
+    // Persist to Firestore.
     const projectData: ProjectData = {
       id,
       name: projectName,
@@ -164,21 +178,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       createdAt: now,
       updatedAt: now,
     };
-    saveProject(projectData);
-    setActiveProjectId(id);
+    await saveProject(userId, projectData);
 
-    // Create a default chat session in IndexedDB.
+    // Create a default chat session.
     const chatStore = useChatStore.getState();
-    chatStore.loadSessionsForProject(id);
+    await chatStore.loadSessionsForProject(id);
 
     // Refresh the in-memory project list.
-    get().loadProjectList();
+    await get().loadProjectList();
 
     return id;
   },
 
   openProject: async (id: string) => {
-    const data = loadProject(id);
+    const { userId } = get();
+    if (!userId) return false;
+
+    const data = await loadProject(userId, id);
     if (!data) return false;
 
     // Reset all stores before loading.
@@ -198,63 +214,31 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     useEditorStore.setState({ _lastCommittedContent: data.content });
 
     // Load timeline entries for this project.
-    useTimelineStore.getState().loadForProject(id);
+    await useTimelineStore.getState().loadForProject(id);
 
     // Load comments for this project.
-    useCommentStore.getState().loadForProject(id);
+    await useCommentStore.getState().loadForProject(id);
 
     // Load story bible for this project.
-    useStoryBibleStore.getState().loadForProject(id);
+    await useStoryBibleStore.getState().loadForProject(id);
 
-    // Mark as active.
-    setActiveProjectId(id);
-
-    // Check for legacy chatHistory that needs migration.
+    // Load chat sessions.
     const chatStore = useChatStore.getState();
-    if (data.chatHistory && data.chatHistory.length > 0) {
-      // Check if IndexedDB sessions already exist
-      const existingSessions = await loadChatSessionsForProject(id);
-      if (existingSessions.length === 0) {
-        // Migrate legacy chatHistory to IndexedDB
-        const now = Date.now();
-        const session: ChatSession = {
-          id: generateId(),
-          projectId: id,
-          name: 'Chat History',
-          messages: data.chatHistory,
-          parentChatId: null,
-          parentMessageIndex: null,
-          branchSummary: null,
-          createdAt: now,
-          updatedAt: now,
-        };
-        await saveChatSession(session);
-
-        // Remove chatHistory from localStorage project data
-        const updated: ProjectData = { ...data };
-        delete updated.chatHistory;
-        updated.updatedAt = Date.now();
-        saveProject(updated);
-      }
-    }
-
-    // Load chat sessions (will find migrated or existing sessions)
     await chatStore.loadSessionsForProject(id);
 
     return true;
   },
 
-  saveCurrentProject: () => {
-    const { activeProjectId, name, voiceId } = get();
-    if (!activeProjectId) return;
+  saveCurrentProject: async () => {
+    const { activeProjectId, name, voiceId, userId } = get();
+    if (!activeProjectId || !userId) return;
 
     const { content } = useEditorStore.getState();
 
     // Try to load existing project to preserve createdAt.
-    const existing = loadProject(activeProjectId);
+    const existing = await loadProject(userId, activeProjectId);
     const now = Date.now();
 
-    // No chatHistory -- chats are persisted in IndexedDB
     const projectData: ProjectData = {
       id: activeProjectId,
       name,
@@ -263,9 +247,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
-    saveProject(projectData);
+    await saveProject(userId, projectData);
 
-    // Persist chat session to IndexedDB
+    // Persist chat session.
     useChatStore.getState().persistCurrentSession();
 
     // Persist timeline entries.
@@ -278,39 +262,39 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     useStoryBibleStore.getState().persist();
 
     // Refresh the in-memory project list.
-    get().loadProjectList();
+    await get().loadProjectList();
   },
 
-  renameProject: (id: string, newName: string) => {
-    const data = loadProject(id);
+  renameProject: async (id: string, newName: string) => {
+    const { userId } = get();
+    if (!userId) return;
+
+    const data = await loadProject(userId, id);
     if (!data) return;
 
     data.name = newName;
     data.updatedAt = Date.now();
-    saveProject(data);
+    await saveProject(userId, data);
 
     // If this is the active project, update in-memory name too.
     if (get().activeProjectId === id) {
       set({ name: newName });
     }
 
-    get().loadProjectList();
+    await get().loadProjectList();
   },
 
   removeProject: async (id: string) => {
-    deleteProjectFromStorage(id);
+    const { userId } = get();
+    if (!userId) return;
 
-    // Clean up IndexedDB chat sessions for this project.
-    await deleteSessionsForProject(id);
+    await deleteProjectFromStorage(userId, id);
 
-    // Clean up timeline entries.
-    useTimelineStore.getState().deleteForProject(id);
-
-    // Clean up comments.
-    useCommentStore.getState().deleteForProject(id);
-
-    // Clean up story bible.
-    useStoryBibleStore.getState().deleteForProject(id);
+    // Clean up subcollections.
+    await deleteSessionsForProject(userId, id);
+    await deleteTimelineEntries(userId, id);
+    await deleteCommentsForProject(userId, id);
+    await deleteStoryBible(userId, id);
 
     // If we deleted the active project, clear active state.
     if (get().activeProjectId === id) {
@@ -318,11 +302,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       get().resetStores();
     }
 
-    get().loadProjectList();
+    await get().loadProjectList();
   },
 
-  duplicateProject: (id: string) => {
-    const data = loadProject(id);
+  duplicateProject: async (id: string) => {
+    const { userId } = get();
+    if (!userId) return null;
+
+    const data = await loadProject(userId, id);
     if (!data) return null;
 
     const newId = generateId();
@@ -335,11 +322,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       createdAt: now,
       updatedAt: now,
     };
-    // Remove legacy chatHistory from duplicate
     delete duplicate.chatHistory;
-    saveProject(duplicate);
+    await saveProject(userId, duplicate);
 
-    get().loadProjectList();
+    await get().loadProjectList();
     return newId;
   },
 

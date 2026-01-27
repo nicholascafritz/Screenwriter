@@ -10,7 +10,11 @@
 /build
 
 # env files
+.env
 .env*.local
+
+# firebase
+.firebase/
 
 # misc
 .DS_Store

@@ -5,7 +5,8 @@
 import { create } from 'zustand';
 import { generateId } from '@/lib/utils';
 import type { Comment } from './comment-types';
-import { loadComments, saveComments, deleteCommentsForProject } from './comment-persistence';
+import { loadComments, saveComments, deleteCommentsForProject } from '@/lib/firebase/firestore-comment-persistence';
+import { useProjectStore } from './project';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,13 +43,13 @@ export interface CommentState {
   setActiveComment: (id: string | null) => void;
 
   /** Load comments for a project from storage. */
-  loadForProject: (projectId: string) => void;
+  loadForProject: (projectId: string) => Promise<void>;
 
   /** Persist comments to storage. */
   persist: () => void;
 
   /** Delete all comments for a project. */
-  deleteForProject: (projectId: string) => void;
+  deleteForProject: (projectId: string) => Promise<void>;
 
   /** Clear all in-memory state. */
   clear: () => void;
@@ -162,19 +163,26 @@ export const useCommentStore = create<CommentState>((set, get) => ({
     set({ activeCommentId: id });
   },
 
-  loadForProject: (projectId) => {
-    const comments = loadComments(projectId);
+  loadForProject: async (projectId) => {
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    const comments = await loadComments(userId, projectId);
     set({ comments, projectId, activeCommentId: null });
   },
 
   persist: () => {
     const { projectId, comments } = get();
     if (!projectId) return;
-    saveComments(projectId, comments);
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    // Fire-and-forget async write.
+    saveComments(userId, projectId, comments);
   },
 
-  deleteForProject: (projectId) => {
-    deleteCommentsForProject(projectId);
+  deleteForProject: async (projectId) => {
+    const userId = useProjectStore.getState().userId;
+    if (!userId) return;
+    await deleteCommentsForProject(userId, projectId);
   },
 
   clear: () => {
