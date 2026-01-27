@@ -1,7 +1,7 @@
 'use client';
 
 // ---------------------------------------------------------------------------
-// ModeSelector -- Toggle between Inline, Diff, and Agent AI modes
+// ModeSelector -- Toggle between Inline, Diff, Agent, and Writers Room modes
 // ---------------------------------------------------------------------------
 
 import React from 'react';
@@ -19,7 +19,7 @@ interface ModeSelectorProps {
 }
 
 // ---------------------------------------------------------------------------
-// Mode configuration
+// Mode configuration with design system colors
 // ---------------------------------------------------------------------------
 
 interface ModeConfig {
@@ -27,6 +27,7 @@ interface ModeConfig {
   label: string;
   icon: React.ElementType;
   tooltip: string;
+  colorVar: string;
 }
 
 const MODES: ModeConfig[] = [
@@ -35,24 +36,28 @@ const MODES: ModeConfig[] = [
     label: 'Inline Edit',
     icon: Pencil,
     tooltip: 'Apply changes directly to the screenplay as you chat',
+    colorVar: '--color-mode-inline',
   },
   {
     id: 'diff',
     label: 'Diff Review',
     icon: SplitSquareHorizontal,
     tooltip: 'Review proposed changes in a side-by-side diff view before accepting',
+    colorVar: '--color-mode-diff',
   },
   {
     id: 'agent',
     label: 'Agent Mode',
     icon: Bot,
     tooltip: 'Autonomous agent that plans and executes multi-step screenplay edits',
+    colorVar: '--color-mode-agent',
   },
   {
     id: 'writers-room',
     label: 'Writers Room',
     icon: Lightbulb,
     tooltip: 'Brainstorm and develop ideas with an opinionated writing partner — no changes made to the script',
+    colorVar: '--color-mode-writers-room',
   },
 ];
 
@@ -67,7 +72,7 @@ export default function ModeSelector({ className }: ModeSelectorProps) {
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-lg bg-muted p-1 text-muted-foreground',
+        'inline-flex items-center rounded-lg bg-surface p-1 gap-0.5',
         className,
       )}
       role="tablist"
@@ -85,12 +90,21 @@ export default function ModeSelector({ className }: ModeSelectorProps) {
               aria-selected={isActive}
               onClick={() => setMode(m.id)}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
+                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all duration-normal',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'hover:bg-background/50 hover:text-foreground',
+                  ? 'shadow-sm'
+                  : 'text-muted-foreground hover:bg-white/5 hover:text-foreground',
               )}
+              style={
+                isActive
+                  ? {
+                      color: `var(${m.colorVar})`,
+                      backgroundColor: `color-mix(in srgb, var(${m.colorVar}) 12%, transparent)`,
+                      border: `1px solid color-mix(in srgb, var(${m.colorVar}) 25%, transparent)`,
+                    }
+                  : undefined
+              }
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{m.label}</span>

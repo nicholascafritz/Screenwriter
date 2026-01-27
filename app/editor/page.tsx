@@ -228,7 +228,7 @@ export default function EditorPage() {
     <FileDropZone onFiles={handleDropFiles} className="h-screen">
       <div className="flex h-screen flex-col bg-background">
         {/* Top Bar */}
-        <header className="flex h-12 items-center justify-between border-b border-border px-3 flex-shrink-0">
+        <header className="flex h-12 items-center justify-between border-b border-border bg-surface px-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -240,15 +240,22 @@ export default function EditorPage() {
             >
               <Clapperboard className="h-5 w-5 text-primary" />
             </button>
-            <span className="font-semibold text-sm">
-              {projectName}
-              {isDirty && <span className="text-muted-foreground ml-1">*</span>}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-foreground">
+                {projectName}
+                {isDirty && <span className="text-muted-foreground ml-1">*</span>}
+              </span>
+              {sceneCount > 0 && (
+                <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                  {sceneCount} {sceneCount === 1 ? 'scene' : 'scenes'}
+                </Badge>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             {/* View mode toggle */}
-            <div className="flex items-center rounded-md border border-border p-0.5">
+            <div className="flex items-center rounded-md border border-border bg-background p-0.5">
               <Tooltip content="Code Editor (Cmd+\)">
                 <Button
                   variant={viewMode === 'editor' ? 'secondary' : 'ghost'}

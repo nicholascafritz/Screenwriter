@@ -17,6 +17,7 @@ import { registerFountainTheme, FOUNTAIN_THEME_NAME } from './FountainTheme';
 import { useEditorStore } from '@/lib/store/editor';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Check, X, ChevronUp, ChevronDown } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -138,7 +139,7 @@ export default function DiffViewer({
       )}
     >
       {/* ---- Toolbar ---- */}
-      <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-2">
+      <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-2.5">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-foreground">
             Review Changes
@@ -150,11 +151,13 @@ export default function DiffViewer({
 
         <div className="flex items-center gap-2">
           {/* Navigation */}
-          <Button variant="ghost" size="sm" onClick={handlePrevDiff}>
-            Previous
+          <Button variant="ghost" size="sm" className="gap-1" onClick={handlePrevDiff}>
+            <ChevronUp className="h-3.5 w-3.5" />
+            Prev
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleNextDiff}>
+          <Button variant="ghost" size="sm" className="gap-1" onClick={handleNextDiff}>
             Next
+            <ChevronDown className="h-3.5 w-3.5" />
           </Button>
 
           {/* Accept individual hunk (if supported) */}
@@ -169,22 +172,30 @@ export default function DiffViewer({
           )}
 
           {/* Primary actions */}
-          <Button variant="destructive" size="sm" onClick={onReject}>
+          <Button variant="destructive" size="sm" className="gap-1" onClick={onReject}>
+            <X className="h-3.5 w-3.5" />
             Reject All
           </Button>
-          <Button variant="default" size="sm" onClick={onAccept}>
+          <Button variant="success" size="sm" className="gap-1" onClick={onAccept}>
+            <Check className="h-3.5 w-3.5" />
             Accept All
           </Button>
         </div>
       </div>
 
-      {/* ---- Labels ---- */}
-      <div className="flex border-b border-border text-xs text-muted-foreground">
-        <div className="flex-1 border-r border-border px-4 py-1.5 font-medium">
-          Original
+      {/* ---- Column Labels ---- */}
+      <div className="flex border-b border-border text-xs font-medium">
+        <div className="flex-1 border-r border-border px-4 py-2 flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-danger" />
+          <span className="text-danger uppercase tracking-wide text-[10px] font-semibold">
+            Original (Before)
+          </span>
         </div>
-        <div className="flex-1 px-4 py-1.5 font-medium">
-          Modified
+        <div className="flex-1 px-4 py-2 flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-success" />
+          <span className="text-success uppercase tracking-wide text-[10px] font-semibold">
+            Proposed (After)
+          </span>
         </div>
       </div>
 

@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import type { ProjectSummary } from '@/lib/store/types';
+import { Badge } from '@/components/ui/badge';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import { FileText, MoreVertical, Pencil, Copy, Trash2 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -32,6 +34,8 @@ interface ProjectCardProps {
   onRename: (id: string, newName: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Render as a compact row for list view */
+  compact?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +48,7 @@ export default function ProjectCard({
   onRename,
   onDuplicate,
   onDelete,
+  compact = false,
 }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -81,17 +86,76 @@ export default function ProjectCard({
     setRenaming(false);
   };
 
-  return (
-    <div
-      className="group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/50 cursor-pointer"
-      onClick={() => {
-        if (!renaming && !menuOpen) onOpen(project.id);
-      }}
-    >
-      {/* Icon + Title */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+  // Derive display values
+  const structureProgress = project.sceneCount > 0 ? Math.min((project.sceneCount / 12) * 100, 100) : 0;
+
+  // Context menu (shared between compact and card views)
+  const contextMenu = (
+    <div ref={menuRef} className="relative flex-shrink-0">
+      <button
+        className="p-1 rounded hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => {
+          e.stopPropagation();
+          setMenuOpen((v) => !v);
+        }}
+      >
+        <MoreVertical className="h-4 w-4 text-muted-foreground" />
+      </button>
+
+      {menuOpen && (
+        <div className="absolute right-0 top-8 z-dropdown w-36 rounded-md border border-border bg-popover py-1 shadow-ds-lg">
+          <button
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-white/5 text-left"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+              setRenameValue(project.name);
+              setRenaming(true);
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Rename
+          </button>
+          <button
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-white/5 text-left"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+              onDuplicate(project.id);
+            }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Duplicate
+          </button>
+          <button
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-white/5 text-left text-danger"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+              onDelete(project.id);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // ---- Compact (list) layout ----
+  if (compact) {
+    return (
+      <div
+        className="group relative flex items-center gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-all duration-normal hover:bg-surface-hover hover:border-[var(--color-border-strong)] cursor-pointer"
+        onClick={() => {
+          if (!renaming && !menuOpen) onOpen(project.id);
+        }}
+      >
+        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+          <FileText className="h-4 w-4 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
           {renaming ? (
             <input
               ref={inputRef}
@@ -106,80 +170,99 @@ export default function ProjectCard({
                 }
               }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-transparent border-b border-primary text-sm font-medium outline-none w-full text-foreground"
+              className="bg-transparent border-b border-primary text-sm font-semibold outline-none w-full text-foreground"
             />
           ) : (
-            <span className="text-sm font-medium truncate">{project.name}</span>
+            <span className="text-sm font-semibold text-foreground truncate block">{project.name}</span>
           )}
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-shrink-0">
+          <span>{project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}</span>
+          <span>{project.sceneCount} {project.sceneCount === 1 ? 'scene' : 'scenes'}</span>
+          <Badge variant="status" className="text-[10px]">In Development</Badge>
+          <span className="text-[11px] text-[var(--color-text-tertiary)]">
+            {relativeTime(project.updatedAt)}
+          </span>
+        </div>
+        {contextMenu}
+      </div>
+    );
+  }
+
+  // ---- Card (grid) layout ----
+  return (
+    <div
+      className="group relative flex flex-col gap-4 rounded-lg border border-border bg-card p-6 transition-all duration-normal hover:-translate-y-0.5 hover:shadow-ds-lg hover:border-[var(--color-border-strong)] cursor-pointer min-h-[280px]"
+      onClick={() => {
+        if (!renaming && !menuOpen) onOpen(project.id);
+      }}
+    >
+      {/* Header: Icon + Title + Menu */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            {renaming ? (
+              <input
+                ref={inputRef}
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={handleRenameSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameSubmit();
+                  if (e.key === 'Escape') {
+                    setRenameValue(project.name);
+                    setRenaming(false);
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-transparent border-b border-primary text-sm font-semibold outline-none w-full text-foreground"
+              />
+            ) : (
+              <h3 className="text-sm font-semibold text-foreground truncate">{project.name}</h3>
+            )}
+          </div>
         </div>
 
         {/* Menu button */}
-        <div ref={menuRef} className="relative flex-shrink-0">
-          <button
-            className="p-1 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen((v) => !v);
-            }}
-          >
-            <MoreVertical className="h-4 w-4 text-muted-foreground" />
-          </button>
+        {contextMenu}
+      </div>
 
-          {menuOpen && (
-            <div className="absolute right-0 top-8 z-50 w-36 rounded-md border border-border bg-popover py-1 shadow-lg">
-              <button
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent text-left"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  setRenameValue(project.name);
-                  setRenaming(true);
-                }}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Rename
-              </button>
-              <button
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent text-left"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onDuplicate(project.id);
-                }}
-              >
-                <Copy className="h-3.5 w-3.5" />
-                Duplicate
-              </button>
-              <button
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent text-left text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onDelete(project.id);
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </button>
-            </div>
-          )}
+      {/* Body */}
+      <div className="flex flex-col gap-3 flex-1">
+        {/* Stats row */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}</span>
+          <span className="opacity-50">&middot;</span>
+          <span>{project.sceneCount} {project.sceneCount === 1 ? 'scene' : 'scenes'}</span>
+        </div>
+
+        {/* Structure progress */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+              Structure Progress
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {project.sceneCount}/12 beats
+            </span>
+          </div>
+          <ProgressBar value={structureProgress} showShimmer={false} />
+        </div>
+
+        {/* Badges */}
+        <div className="flex gap-2 flex-wrap">
+          <Badge variant="status">In Development</Badge>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span>
-          {project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}
+      {/* Footer */}
+      <div className="pt-3 border-t border-border">
+        <span className="text-[11px] text-[var(--color-text-tertiary)]">
+          Last edited: {relativeTime(project.updatedAt)}
         </span>
-        <span className="text-border">|</span>
-        <span>
-          {project.sceneCount} {project.sceneCount === 1 ? 'scene' : 'scenes'}
-        </span>
-      </div>
-
-      {/* Date */}
-      <div className="text-xs text-muted-foreground/70">
-        {relativeTime(project.updatedAt)}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProjectStore } from '@/lib/store/project';
 import { SAMPLE_SCRIPT } from '@/lib/store/editor';
@@ -9,14 +9,17 @@ import { ACCEPTED_FILE_TYPES } from '@/lib/upload/processor';
 import ProjectCard from '@/components/project/ProjectCard';
 import FileDropZone from '@/components/upload/FileDropZone';
 import AuthGate from '@/components/auth/AuthGate';
-import { useAuth } from '@/lib/firebase/auth-context';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+import NewProjectModal from '@/components/project/NewProjectModal';
 import { Button } from '@/components/ui/button';
-import { FilePlus, FileText, Upload, Clapperboard, LogOut } from 'lucide-react';
+import { FilePlus, FileText, Upload, LayoutGrid, List } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, signOut } = useAuth();
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const projects = useProjectStore((s) => s.projects);
   const createProject = useProjectStore((s) => s.createProject);
@@ -33,8 +36,8 @@ export default function HomePage() {
 
   // -- Handlers -------------------------------------------------------------
 
-  const handleNewProject = async () => {
-    await createProject();
+  const handleNewProject = async (name?: string, content?: string) => {
+    await createProject(name, content);
     router.push('/editor');
   };
 
@@ -65,16 +68,12 @@ export default function HomePage() {
       const processed = await processFiles(files);
       if (processed.length === 0) return;
 
-      // For multiple files, create a project for each.
-      // Open the last one (most recently processed).
       let lastId: string | undefined;
       for (const file of processed) {
         lastId = await createProject(file.name, file.content);
       }
 
       if (lastId) {
-        // The createProject call already sets the active project,
-        // but if we created multiple we need to open the last one.
         if (processed.length > 1) {
           await openProject(lastId);
         }
@@ -98,116 +97,145 @@ export default function HomePage() {
   return (
     <AuthGate>
     <FileDropZone onFiles={handleDropFiles} className="min-h-screen">
-      <div className="flex min-h-screen flex-col items-center p-8">
-        {/* User bar */}
-        <div className="absolute top-4 right-6 flex items-center gap-3">
-          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-            {user?.email}
-          </span>
-          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => signOut()}>
-            <LogOut className="h-3 w-3" />
-            Sign Out
-          </Button>
-        </div>
+      <div className="flex min-h-screen flex-col bg-background">
+        {/* Navbar */}
+        <Navbar />
 
-        {/* Header */}
-        <div className="flex flex-col items-center gap-4 mt-12 mb-10">
-          <div className="flex items-center gap-3">
-            <Clapperboard className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-bold tracking-tight">Screenwriter</h1>
+        {/* Main content */}
+        <main className="flex-1 flex flex-col items-center px-8 py-12">
+          {/* Hero Section */}
+          <div className="flex flex-col items-center gap-4 mb-12">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              {hasProjects ? 'Welcome Back' : 'Start Your First Screenplay'}
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-md text-center">
+              AI-powered screenplay IDE. Brainstorm, outline, draft, edit, and
+              revise with real-time AI assistance.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground max-w-md text-center">
-            AI-powered screenplay IDE. Brainstorm, outline, draft, edit, and
-            revise with real-time AI assistance.
-          </p>
-        </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-3 mb-8">
-          <Button size="lg" className="gap-2" onClick={handleNewProject}>
-            <FilePlus className="h-4 w-4" />
-            New Screenplay
-          </Button>
-          <Button
-            variant="secondary"
-            size="lg"
-            className="gap-2"
-            onClick={handleUploadClick}
-          >
-            <Upload className="h-4 w-4" />
-            Upload Script
-          </Button>
-          {!hasProjects && (
+          {/* Action buttons */}
+          <div className="flex items-center gap-3 mb-10">
+            <Button size="lg" className="gap-2" onClick={() => setShowNewModal(true)}>
+              <FilePlus className="h-4 w-4" />
+              New Screenplay
+            </Button>
             <Button
-              variant="outline"
+              variant="secondary"
               size="lg"
               className="gap-2"
-              onClick={handleSampleProject}
+              onClick={handleUploadClick}
             >
-              <FileText className="h-4 w-4" />
-              Sample Script
+              <Upload className="h-4 w-4" />
+              Upload Script
             </Button>
+            {!hasProjects && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="gap-2"
+                onClick={handleSampleProject}
+              >
+                <FileText className="h-4 w-4" />
+                Try Sample
+              </Button>
+            )}
+          </div>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_FILE_TYPES}
+            multiple
+            className="hidden"
+            onChange={handleFileInput}
+          />
+
+          {/* Project grid */}
+          {hasProjects ? (
+            <div className="w-full max-w-5xl">
+              {/* Section header with view toggle */}
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-sm font-semibold text-foreground">
+                  Recent Projects
+                </h2>
+                <div className="flex items-center rounded-md border border-border p-0.5">
+                  <button
+                    className={`p-1.5 rounded transition-colors ${
+                      viewMode === 'grid'
+                        ? 'bg-white/10 text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    onClick={() => setViewMode('grid')}
+                    title="Grid view"
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    className={`p-1.5 rounded transition-colors ${
+                      viewMode === 'list'
+                        ? 'bg-white/10 text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    onClick={() => setViewMode('list')}
+                    title="List view"
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {projects.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onOpen={handleOpenProject}
+                      onRename={renameProject}
+                      onDuplicate={duplicateProject}
+                      onDelete={removeProject}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {projects.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onOpen={handleOpenProject}
+                      onRename={renameProject}
+                      onDuplicate={duplicateProject}
+                      onDelete={removeProject}
+                      compact
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 mt-4 text-center">
+              <div className="rounded-lg border-2 border-dashed border-border p-10">
+                <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Drop .fountain, .fdx, or .txt files here to import
+                </p>
+              </div>
+            </div>
           )}
-        </div>
-
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPTED_FILE_TYPES}
-          multiple
-          className="hidden"
-          onChange={handleFileInput}
-        />
-
-        {/* Project grid */}
-        {hasProjects ? (
-          <div className="w-full max-w-4xl">
-            <h2 className="text-sm font-medium text-muted-foreground mb-4">
-              Your Projects
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onOpen={handleOpenProject}
-                  onRename={renameProject}
-                  onDuplicate={duplicateProject}
-                  onDelete={removeProject}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4 mt-8 text-center">
-            <div className="rounded-lg border-2 border-dashed border-border p-10">
-              <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">
-                Drop .fountain, .fdx, or .txt files here to import
-              </p>
-            </div>
-          </div>
-        )}
+        </main>
 
         {/* Footer */}
-        <div className="text-sm text-muted-foreground flex flex-col items-center gap-2 mt-auto pt-12 pb-4">
-          <p>Fountain format &middot; Claude AI &middot; Monaco Editor</p>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-              Inline Edits
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              Diff Review
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-purple-500" />
-              Agent Mode
-            </span>
-          </div>
-        </div>
+        <Footer />
+
+        {/* New Project Modal */}
+        <NewProjectModal
+          open={showNewModal}
+          onClose={() => setShowNewModal(false)}
+          onCreate={handleNewProject}
+        />
       </div>
     </FileDropZone>
     </AuthGate>
