@@ -1,0 +1,443 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   Design System Tokens
+   Screenwriter IDE - UI Kit & Design System v1.0
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* --- Base Colors (HSL for Tailwind compatibility) --- */
+    --background: 234 47% 14%;
+    --foreground: 213 31% 91%;
+
+    --card: 222 47% 14%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 213 31% 91%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 22%;
+    --accent-foreground: 213 31% 91%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 217 33% 22%;
+    --border-strong: 215 25% 35%;
+    --input: 217 33% 22%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+
+    /* --- Raw Design System Colors (hex-based for direct use) --- */
+    --color-background: #1a1a2e;
+    --color-surface: #1e293b;
+    --color-surface-hover: #334155;
+    --color-border: #334155;
+    --color-border-strong: #475569;
+
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-text-tertiary: #64748b;
+    --color-text-inverse: #1a1a2e;
+
+    /* Screenplay Element Colors */
+    --color-scene-heading: #4ade80;
+    --color-character: #60a5fa;
+    --color-dialogue: #e2e8f0;
+    --color-action: #94a3b8;
+    --color-transition: #c084fc;
+    --color-parenthetical: #fbbf24;
+    --color-note: #64748b;
+
+    /* Semantic Colors */
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-primary-active: #1d4ed8;
+
+    --color-success: #4ade80;
+    --color-success-hover: #22c55e;
+    --color-success-bg: rgba(74, 222, 128, 0.1);
+
+    --color-warning: #fbbf24;
+    --color-warning-hover: #f59e0b;
+    --color-warning-bg: rgba(251, 191, 36, 0.1);
+
+    --color-danger: #f87171;
+    --color-danger-hover: #ef4444;
+    --color-danger-bg: rgba(248, 113, 113, 0.1);
+
+    --color-info: #60a5fa;
+    --color-info-bg: rgba(96, 165, 250, 0.1);
+
+    /* Mode Colors */
+    --color-mode-inline: #60a5fa;
+    --color-mode-diff: #fbbf24;
+    --color-mode-agent: #c084fc;
+    --color-mode-writers-room: #4ade80;
+
+    /* Opacity Variations */
+    --opacity-disabled: 0.5;
+    --opacity-hover: 0.8;
+    --opacity-overlay: 0.6;
+    --opacity-subtle: 0.1;
+
+    /* --- Spacing Scale (4px base) --- */
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --space-20: 80px;
+    --space-24: 96px;
+
+    /* --- Border Radius --- */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+
+    /* --- Shadows --- */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.4);
+
+    /* --- Z-Index Scale --- */
+    --z-base: 0;
+    --z-dropdown: 1000;
+    --z-sticky: 1100;
+    --z-fixed: 1200;
+    --z-modal-backdrop: 1300;
+    --z-modal: 1400;
+    --z-popover: 1500;
+    --z-tooltip: 1600;
+
+    /* --- Typography --- */
+    --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-screenplay: 'Courier Prime', 'Courier New', Courier, monospace;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+
+    --leading-tight: 1.25;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.75;
+
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.025em;
+
+    /* --- Transition Timings --- */
+    --transition-fast: 100ms;
+    --transition-normal: 150ms;
+    --transition-slow: 300ms;
+    --transition-very-slow: 500ms;
+
+    /* --- Easing Functions --- */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+    --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ============================================================================
+   Font Imports
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ============================================================================
+   Monaco Editor Overrides
+   ============================================================================ */
+
+.monaco-editor {
+  font-feature-settings: 'liga' 0;
+}
+
+.monaco-editor .margin {
+  background-color: var(--color-background) !important;
+}
+
+/* ============================================================================
+   Custom Scrollbar
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(217 33% 25%);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(217 33% 35%);
+}
+
+/* ============================================================================
+   Screenplay Print Styles
+   ============================================================================ */
+
+@media print {
+  .screenplay-preview-page {
+    break-after: page;
+    margin: 0;
+    padding: 1in 1in 1in 1.5in;
+    width: 8.5in;
+    height: 11in;
+  }
+}
+
+/* ============================================================================
+   Panel Resize Handle
+   ============================================================================ */
+
+.resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background var(--transition-normal) ease;
+  flex-shrink: 0;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: hsl(217 91% 60% / 0.5);
+}
+
+/* ============================================================================
+   AI Edit Animations
+   ============================================================================ */
+
+@keyframes highlight-fade {
+  0% { background-color: hsl(217 91% 60% / 0.3); }
+  100% { background-color: transparent; }
+}
+
+.ai-edit-highlight {
+  animation: highlight-fade 2s ease-out;
+}
+
+.screenplay-highlight-line {
+  background-color: hsl(217 91% 60% / 0.15) !important;
+  animation: ai-pulse 1.5s ease-in-out 1;
+}
+
+.screenplay-highlight-glyph {
+  background-color: hsl(217 91% 60% / 0.4);
+  width: 3px !important;
+  margin-left: 3px;
+  border-radius: 1px;
+}
+
+@keyframes ai-pulse {
+  0% { background-color: hsl(217 91% 60% / 0.35); }
+  50% { background-color: hsl(217 91% 60% / 0.1); }
+  100% { background-color: hsl(217 91% 60% / 0.15); }
+}
+
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
+/* ============================================================================
+   Design System Animations
+   ============================================================================ */
+
+/* Skeleton loader */
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    var(--color-surface-hover) 50%,
+    var(--color-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* Spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Shimmer (for progress bars) */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 300ms var(--ease-decelerate);
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 200ms var(--ease-accelerate);
+}
+
+/* Panel slide */
+.panel-enter {
+  transform: translateX(100%);
+}
+
+.panel-enter-active {
+  transform: translateX(0);
+  transition: transform 300ms var(--ease-decelerate);
+}
+
+.panel-exit {
+  transform: translateX(0);
+}
+
+.panel-exit-active {
+  transform: translateX(100%);
+  transition: transform 250ms var(--ease-accelerate);
+}
+
+/* Chat message appearance */
+.message-enter {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+}
+
+.message-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: all 200ms var(--ease-decelerate);
+}
+
+/* Toast notification */
+.toast-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.toast-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 200ms var(--ease-decelerate);
+}
+
+.toast-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-exit-active {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 150ms var(--ease-accelerate);
+}
+
+/* Agent task completion */
+@keyframes task-complete {
+  0% {
+    transform: scale(1);
+    background: transparent;
+  }
+  50% {
+    transform: scale(1.05);
+    background: var(--color-success-bg);
+  }
+  100% {
+    transform: scale(1);
+    background: transparent;
+  }
+}
+
+.task-complete-enter {
+  animation: task-complete 300ms var(--ease-standard);
+}
+
+/* Tool execution complete */
+.tool-complete {
+  background: var(--color-success-bg);
+  border-color: var(--color-success);
+  transition: all 300ms var(--ease-standard);
+}
