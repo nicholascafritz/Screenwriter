@@ -8,6 +8,7 @@ import type { DiffHunk } from '@/lib/diff/types';
 import { parseFountain } from '@/lib/fountain/parser';
 import { calculateDiff } from '@/lib/diff/engine';
 import { useTimelineStore } from './timeline';
+import { useOutlineStore } from './outline';
 
 // ---------------------------------------------------------------------------
 // Sample Fountain screenplay
@@ -264,6 +265,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       const screenplay = parseFountain(content);
       set({ screenplay });
+      // Reconcile the Outline with the fresh parse result.
+      // This keeps persistent scene identities in sync with the Fountain text.
+      const outlineStore = useOutlineStore.getState();
+      if (outlineStore.isLoaded) {
+        outlineStore.reconcileFromParse(screenplay);
+      }
     } catch {
       // If parsing fails, keep the previous parse result.
       // This prevents the UI from breaking on transient syntax errors
@@ -318,6 +325,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // Parse the sample immediately.
     const screenplay = parseFountain(content);
     set({ screenplay });
+    // Reconcile outline with the parsed result.
+    const outlineStore = useOutlineStore.getState();
+    if (outlineStore.isLoaded) {
+      outlineStore.reconcileFromParse(screenplay);
+    }
   },
 
   // -- Undo/redo actions ----------------------------------------------------

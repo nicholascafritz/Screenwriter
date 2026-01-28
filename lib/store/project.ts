@@ -15,11 +15,13 @@ import { deleteSessionsForProject } from '@/lib/firebase/firestore-chat-persiste
 import { deleteTimelineEntries } from '@/lib/firebase/firestore-changelog-persistence';
 import { deleteCommentsForProject } from '@/lib/firebase/firestore-comment-persistence';
 import { deleteStoryBible } from '@/lib/firebase/firestore-story-bible-persistence';
+import { deleteOutline } from '@/lib/firebase/firestore-outline-persistence';
 import { useEditorStore } from './editor';
 import { useChatStore } from './chat';
 import { useTimelineStore } from './timeline';
 import { useCommentStore } from './comments';
 import { useStoryBibleStore } from './story-bible';
+import { useOutlineStore } from './outline';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -249,6 +251,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Load story bible for this project.
     await useStoryBibleStore.getState().loadForProject(id);
 
+    // Load the structural outline for this project.
+    await useOutlineStore.getState().loadForProject(id);
+
     // Load chat sessions.
     const chatStore = useChatStore.getState();
     await chatStore.loadSessionsForProject(id);
@@ -288,6 +293,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Persist story bible.
     useStoryBibleStore.getState().persist();
 
+    // Persist structural outline.
+    useOutlineStore.getState().persist();
+
     // Refresh the in-memory project list.
     await get().loadProjectList();
   },
@@ -322,6 +330,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     await deleteTimelineEntries(userId, id);
     await deleteCommentsForProject(userId, id);
     await deleteStoryBible(userId, id);
+    await deleteOutline(userId, id);
 
     // If we deleted the active project, clear active state.
     if (get().activeProjectId === id) {
@@ -377,5 +386,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Reset story bible store.
     const storyBibleStore = useStoryBibleStore.getState();
     storyBibleStore.clear();
+
+    // Reset outline store.
+    const outlineStore = useOutlineStore.getState();
+    outlineStore.clear();
   },
 }));
