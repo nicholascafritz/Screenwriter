@@ -95,6 +95,30 @@ export interface ProjectState {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const ACTIVE_PROJECT_KEY = 'screenwriter:activeProjectId';
+
+/** Persist the active project ID to localStorage for session restoration. */
+function persistActiveProjectId(id: string | null) {
+  try {
+    if (id) {
+      localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+    } else {
+      localStorage.removeItem(ACTIVE_PROJECT_KEY);
+    }
+  } catch {
+    // localStorage may be unavailable (SSR, private browsing).
+  }
+}
+
+/** Read the previously active project ID from localStorage. */
+export function getPersistedActiveProjectId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_PROJECT_KEY);
+  } catch {
+    return null;
+  }
+}
+
 /** Default content for a brand-new screenplay. */
 function defaultContent(): string {
   return `Title: Untitled Screenplay
@@ -133,6 +157,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (!id) {
       get().resetStores();
       set({ activeProjectId: null, projects: [] });
+      persistActiveProjectId(null);
     }
   },
 
@@ -162,6 +187,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name: projectName,
       voiceId: 'default',
     });
+    persistActiveProjectId(id);
 
     // Populate the editor.
     const editorStore = useEditorStore.getState();
@@ -206,6 +232,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name: data.name,
       voiceId: data.voiceId,
     });
+    persistActiveProjectId(id);
 
     // Populate the editor.
     const editorStore = useEditorStore.getState();
@@ -299,6 +326,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // If we deleted the active project, clear active state.
     if (get().activeProjectId === id) {
       set({ activeProjectId: null });
+      persistActiveProjectId(null);
       get().resetStores();
     }
 

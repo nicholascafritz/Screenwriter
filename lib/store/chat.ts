@@ -127,6 +127,9 @@ export interface ChatState {
 
   /** Compact the conversation history by summarizing old messages. */
   compactHistory: () => Promise<void>;
+
+  /** Auto-generate a title for the current session if it's still "New Chat". */
+  autoTitleSession: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -507,6 +510,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // If compaction fails, continue with the existing messages.
     } finally {
       set({ isCompacting: false });
+    }
+  },
+
+  autoTitleSession: async () => {
+    const { activeChatId, activeProjectId, messages, chatSessions } = get();
+    if (!activeChatId || !activeProjectId) return;
+
+    // Only auto-title sessions that are still named "New Chat".
+    const currentSession = chatSessions.find((s) => s.id === activeChatId);
+    if (!currentSession || currentSession.name !== 'New Chat') return;
+
+    // Need at least one user message and one assistant message.
+    const userMsg = messages.find((m) => m.role === 'user');
+    const assistantMsg = messages.find((m) => m.role === 'assistant' && m.content.trim());
+    if (!userMsg || !assistantMsg) return;
+
+    try {
+      const response = await fetch('/api/generate-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userMessage: userMsg.content,
+          assistantMessage: assistantMsg.content,
+        }),
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const title = data.title?.trim();
+      if (!title) return;
+
+      await get().renameSession(activeChatId, title);
+    } catch {
+      // Auto-titling is non-critical; fail silently.
     }
   },
 }));

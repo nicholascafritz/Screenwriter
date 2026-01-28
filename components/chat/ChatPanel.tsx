@@ -357,6 +357,9 @@ export default function ChatPanel({ className }: ChatPanelProps) {
       setStreaming(false);
       useOperationsStore.getState().setAIActive(false);
       abortControllerRef.current = null;
+
+      // Auto-title the session after the first exchange.
+      useChatStore.getState().autoTitleSession();
     }
   }, [
     inputValue,

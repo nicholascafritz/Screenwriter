@@ -62,7 +62,8 @@ export type TaskType =
   | 'screenplay-write'
   | 'diff-review'
   | 'inline-edit'
-  | 'summarize';
+  | 'summarize'
+  | 'generate-title';
 
 // ---------------------------------------------------------------------------
 // Routing table
@@ -82,6 +83,7 @@ export type TaskType =
  * | agent-execute     | Sonnet 4.5        | Yes      | Writing + tool use in execution steps   |
  * | inline-edit       | Sonnet 4.5        | No       | Speed-sensitive, contained changes      |
  * | summarize         | Haiku 3.5         | No       | Mechanical compression, cost-efficient  |
+ * | generate-title    | Haiku 3.5         | No       | Short title generation, fast + cheap    |
  */
 const ROUTING_TABLE: Record<TaskType, ModelConfig> = {
   'agent-plan':       OPUS_THINKING,
@@ -91,6 +93,7 @@ const ROUTING_TABLE: Record<TaskType, ModelConfig> = {
   'agent-execute':    SONNET_THINKING,
   'inline-edit':      SONNET_STANDARD,
   'summarize':        HAIKU_STANDARD,
+  'generate-title':   HAIKU_STANDARD,
 };
 
 // ---------------------------------------------------------------------------
@@ -163,5 +166,8 @@ export function explainRouting(task: TaskType): string {
     case 'summarize':
       return `Using ${config.label} for summarization — ` +
         `efficient text compression at minimal cost.`;
+    case 'generate-title':
+      return `Using ${config.label} for title generation — ` +
+        `fast, cheap short-text generation.`;
   }
 }

@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/lib/store/editor';
 import { useChatStore } from '@/lib/store/chat';
-import { useProjectStore } from '@/lib/store/project';
+import { useProjectStore, getPersistedActiveProjectId } from '@/lib/store/project';
 import { debounce } from '@/lib/utils';
 import { processFiles } from '@/lib/upload/processor';
 import AuthGate from '@/components/auth/AuthGate';
@@ -82,13 +82,36 @@ export default function EditorPage() {
   const createProject = useProjectStore((s) => s.createProject);
   const openProject = useProjectStore((s) => s.openProject);
 
-  // -- Project context guard ------------------------------------------------
-  // If there's no active project, redirect to the home page.
+  // -- Project restoration / guard ------------------------------------------
+  // On mount (e.g. page refresh), try to restore the last active project
+  // from localStorage. If that fails, redirect to the home page.
+  const [isRestoring, setIsRestoring] = useState(false);
+  const restorationAttempted = useRef(false);
+
   useEffect(() => {
-    if (!activeProjectId) {
+    if (activeProjectId) return; // Already have a project loaded.
+    if (restorationAttempted.current) {
+      // We already tried restoring — give up and redirect.
       router.replace('/');
+      return;
     }
-  }, [activeProjectId, router]);
+
+    restorationAttempted.current = true;
+    const persistedId = getPersistedActiveProjectId();
+    if (!persistedId) {
+      router.replace('/');
+      return;
+    }
+
+    // Try to re-open the persisted project (loads all data including chat).
+    setIsRestoring(true);
+    openProject(persistedId).then((ok) => {
+      setIsRestoring(false);
+      if (!ok) {
+        router.replace('/');
+      }
+    });
+  }, [activeProjectId, openProject, router]);
 
   // -- Auto-save (1.5s debounce) -------------------------------------------
   const debouncedSave = useMemo(
@@ -218,8 +241,8 @@ export default function EditorPage() {
   const sceneCount = screenplay?.scenes?.length ?? 0;
   const characterCount = screenplay?.characters?.length ?? 0;
 
-  // Don't render until we have a project.
-  if (!activeProjectId) {
+  // Don't render until we have a project (may be restoring from localStorage).
+  if (!activeProjectId || isRestoring) {
     return null;
   }
 
