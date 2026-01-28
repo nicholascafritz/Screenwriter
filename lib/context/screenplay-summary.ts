@@ -53,6 +53,15 @@ export interface ActBreak {
   beat?: string;
 }
 
+export interface SceneSummary {
+  /** 1-based scene number for user reference */
+  number: number;
+  /** The scene heading (e.g., "INT. COFFEE SHOP - DAY") */
+  heading: string;
+  /** Characters present in this scene */
+  characters: string[];
+}
+
 export interface ScreenplayStateSummary {
   // Metadata
   generatedAt: number;
@@ -64,6 +73,9 @@ export interface ScreenplayStateSummary {
   sceneCount: number;
   estimatedRuntime: string;
   actBreaks: ActBreak[];
+
+  // Scene list (numbered for AI reference)
+  scenes: SceneSummary[];
 
   // Characters (sorted by prominence)
   characters: CharacterSummary[];
@@ -120,6 +132,9 @@ export function generateScreenplaySummary(
   // Build continuity facts
   const continuityFacts = buildContinuityFacts(parsed, bible, characters);
 
+  // Build numbered scene list for AI reference
+  const scenes = buildSceneList(parsed);
+
   return {
     generatedAt: Date.now(),
     projectId,
@@ -128,6 +143,7 @@ export function generateScreenplaySummary(
     sceneCount: parsed.scenes.length,
     estimatedRuntime: `~${pageCount} minutes`,
     actBreaks,
+    scenes,
     characters,
     plotThreads,
     continuityFacts,
@@ -150,6 +166,30 @@ function extractTitle(parsed: Screenplay): string | undefined {
     return parsed.titlePage.Title;
   }
   return undefined;
+}
+
+/**
+ * Build a numbered scene list for AI reference.
+ * This ensures the AI knows exactly which scene is "scene 1", "scene 2", etc.
+ */
+function buildSceneList(parsed: Screenplay): SceneSummary[] {
+  return parsed.scenes.map((scene, index) => {
+    // Extract character names from the scene
+    const characters = new Set<string>();
+    for (const el of scene.elements) {
+      if (el.type === 'character') {
+        // Strip extensions like (V.O.), (O.S.), (CONT'D)
+        const name = el.text.replace(/\s*\(.*?\)\s*/g, '').trim().toUpperCase();
+        characters.add(name);
+      }
+    }
+
+    return {
+      number: index + 1, // 1-based numbering
+      heading: scene.heading,
+      characters: Array.from(characters),
+    };
+  });
 }
 
 interface CharacterDataMap {
@@ -438,6 +478,18 @@ export function formatSummaryForPrompt(summary: ScreenplayStateSummary): string 
     lines.push(`**Themes:** ${summary.themes.join(', ')}`);
   }
   lines.push('');
+
+  // Numbered scene list (critical for AI to identify scenes correctly)
+  if (summary.scenes.length > 0) {
+    lines.push('**Scene List (use these numbers when referencing scenes):**');
+    for (const scene of summary.scenes) {
+      const charList = scene.characters.length > 0
+        ? ` [${scene.characters.slice(0, 3).join(', ')}${scene.characters.length > 3 ? '...' : ''}]`
+        : '';
+      lines.push(`- Scene ${scene.number}: ${scene.heading}${charList}`);
+    }
+    lines.push('');
+  }
 
   // Characters (top 8)
   lines.push('**Characters:**');
