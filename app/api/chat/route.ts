@@ -2,12 +2,15 @@
 // API Route -- /api/chat
 // ---------------------------------------------------------------------------
 //
-// Streaming chat endpoint for inline and diff editing modes.  Accepts a user
-// message along with mode, voice, and screenplay context, then streams back
-// newline-delimited JSON chunks containing text, tool calls, tool results,
-// and a final "done" event.
+// Streaming chat endpoint for inline, diff, and writers-room modes.
+//
+// Model routing (via lib/ai/model-router):
+//   - inline mode:       Sonnet 4.5 standard (fast, contained edits)
+//   - diff mode:         Sonnet 4.5 + thinking (reasoned change proposals)
+//   - writers-room mode: Opus 4.5 standard (top-tier creative analysis)
 //
 // Streaming format (newline-delimited JSON):
+//   {"type":"metadata","model":"...","thinking":false}
 //   {"type":"text","content":"..."}
 //   {"type":"tool_call","name":"edit_scene","input":{...}}
 //   {"type":"tool_result","name":"edit_scene","result":"...","updatedScreenplay":"..."}
@@ -24,6 +27,8 @@ import { buildSystemPrompt } from '@/lib/agent/prompts';
 import { executeToolCall, getToolsForMode } from '@/lib/agent/tools';
 import { getVoiceById, PRESET_VOICES } from '@/lib/agent/voices';
 import { computePatch } from '@/lib/diff/patch-transport';
+import { buildModelParams, type ModelConfig } from '@/lib/ai/models';
+import { chatModeToTask, getModelForTask } from '@/lib/ai/model-router';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,6 +107,11 @@ export async function POST(request: NextRequest) {
       { role: 'user', content: message },
     ];
 
+    // Route to the optimal model for this chat mode.
+    const resolvedMode = mode ?? 'inline';
+    const task = chatModeToTask(resolvedMode);
+    const modelConfig = getModelForTask(task);
+
     // Track the current screenplay state for tool execution.
     let currentScreenplay = screenplay;
 
@@ -109,7 +119,16 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const resolvedMode = mode ?? 'inline';
+          // Emit metadata so the client knows which model is handling this request.
+          controller.enqueue(
+            encodeChunk({
+              type: 'metadata',
+              model: modelConfig.model,
+              label: modelConfig.label,
+              thinking: !!modelConfig.thinking,
+            }),
+          );
+
           const iterationLimit = resolvedMode === 'writers-room' ? 25 : 10;
           currentScreenplay = await runConversationLoop(
             client,
@@ -118,6 +137,7 @@ export async function POST(request: NextRequest) {
             currentScreenplay,
             controller,
             resolvedMode,
+            modelConfig,
             iterationLimit,
           );
 
@@ -164,6 +184,10 @@ export async function POST(request: NextRequest) {
  * generating.  This loop repeats until Claude produces a final text-only
  * response (up to a maximum of {@link maxIterations} to prevent runaway loops).
  *
+ * The model configuration (including extended thinking) is applied
+ * consistently across all iterations so that thinking blocks in the
+ * message history are valid for subsequent API calls.
+ *
  * Returns the final screenplay text (which may have been updated by tools).
  */
 async function runConversationLoop(
@@ -173,16 +197,18 @@ async function runConversationLoop(
   screenplay: string,
   controller: ReadableStreamDefaultController,
   mode: string,
+  modelConfig: ModelConfig,
   maxIterations = 10,
 ): Promise<string> {
   let currentScreenplay = screenplay;
 
+  // Build the model-specific API parameters once (reused every iteration).
+  const modelParams = buildModelParams(modelConfig);
+
   for (let iteration = 0; iteration < maxIterations; iteration++) {
-    // Stream the response from Claude.
-    const tokenLimit = mode === 'writers-room' ? 8192 : 4096;
+    // Stream the response from Claude using the routed model.
     const stream = client.messages.stream({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: tokenLimit,
+      ...modelParams,
       system: systemPrompt,
       messages,
       tools: formatToolsForAPI(mode),
@@ -260,7 +286,9 @@ async function runConversationLoop(
     }
 
     // Append the assistant's response and tool results to the message history
-    // so Claude can continue processing.
+    // so Claude can continue processing.  When thinking is enabled, the
+    // assistant content includes thinking blocks which MUST be preserved
+    // for the API to accept subsequent turns.
     messages.push({
       role: 'assistant',
       content: finalMessage.content,
