@@ -17,6 +17,7 @@ import React, { useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useEditorStore } from '@/lib/store/editor';
 import { useOutlineStore } from '@/lib/store/outline';
+import { useStoryBibleStore } from '@/lib/store/story-bible';
 import type { OutlineEntry } from '@/lib/store/outline-types';
 import type { Scene } from '@/lib/fountain/types';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
@@ -53,6 +54,7 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
   const outline = useOutlineStore((s) => s.outline);
   const screenplay = useEditorStore((s) => s.screenplay);
   const cursorLine = useEditorStore((s) => s.cursorLine);
+  const beatSheet = useStoryBibleStore((s) => s.bible?.beatSheet);
 
   // -- Derived data ---------------------------------------------------------
 
@@ -77,6 +79,18 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
     }
     return map;
   }, [screenplay]);
+
+  /**
+   * Map from beat ID → beat name for display in BeatCards.
+   */
+  const beatNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!beatSheet) return map;
+    for (const beat of beatSheet) {
+      map.set(beat.id, beat.beat);
+    }
+    return map;
+  }, [beatSheet]);
 
   /**
    * Determine which scene is "active" based on the current cursor line.
@@ -174,6 +188,11 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
                 sceneIndex={idx}
                 isActive={entry.id === activeSceneId}
                 onClick={() => handleSceneClick(entry)}
+                beatName={
+                  entry.beatId
+                    ? beatNameMap.get(entry.beatId)
+                    : undefined
+                }
               />
             ))}
           </div>

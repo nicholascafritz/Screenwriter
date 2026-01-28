@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useCommentStore } from '@/lib/store/comments';
 import { useEditorStore } from '@/lib/store/editor';
 import { useProjectStore } from '@/lib/store/project';
+import { useOutlineStore } from '@/lib/store/outline';
 import type { Comment } from '@/lib/store/comment-types';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,6 +39,16 @@ export default function CommentsPanel({ className }: CommentsPanelProps) {
   const cursorLine = useEditorStore((s) => s.cursorLine);
   const selection = useEditorStore((s) => s.selection);
   const projectId = useProjectStore((s) => s.activeProjectId);
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+
+  /** Map from SceneId → location name for display. */
+  const sceneNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const scene of outlineScenes) {
+      map.set(scene.id, scene.location || scene.heading || 'Untitled');
+    }
+    return map;
+  }, [outlineScenes]);
 
   const [filter, setFilter] = useState<FilterMode>('active');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -80,6 +91,7 @@ export default function CommentsPanel({ className }: CommentsPanelProps) {
         content: text,
         author: 'user',
         resolved: false,
+        sceneId: null,
       });
       setShowAddForm(false);
     },
@@ -162,6 +174,11 @@ export default function CommentsPanel({ className }: CommentsPanelProps) {
                     </Badge>
                     <span className="text-muted-foreground">
                       L{comment.startLine}{comment.endLine !== comment.startLine ? `-${comment.endLine}` : ''}
+                      {comment.sceneId && sceneNameMap.get(comment.sceneId) && (
+                        <span className="ml-1 text-[10px]">
+                          ({sceneNameMap.get(comment.sceneId)})
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-0.5">

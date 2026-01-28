@@ -2,9 +2,10 @@
 
 import React from 'react';
 import type { TimelineEntry } from '@/lib/diff/types';
+import { useOutlineStore } from '@/lib/store/outline';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, User, Bot } from 'lucide-react';
+import { Eye, User, Bot, MapPin } from 'lucide-react';
 
 interface ChangeLogEntryProps {
   entry: TimelineEntry;
@@ -21,6 +22,31 @@ function formatRelativeTime(timestamp: number): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function AffectedSceneBadges({ sceneIds }: { sceneIds: string[] }) {
+  const scenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+  const names = sceneIds
+    .map((id) => scenes.find((s) => s.id === id))
+    .filter(Boolean)
+    .map((s) => s!.location || s!.heading || 'Untitled');
+
+  if (names.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {names.map((name, idx) => (
+        <Badge
+          key={idx}
+          variant="outline"
+          className="text-[9px] h-3.5 px-1 gap-0.5"
+        >
+          <MapPin className="h-2 w-2" />
+          {name}
+        </Badge>
+      ))}
+    </div>
+  );
 }
 
 export default function ChangeLogEntry({ entry, onViewDiff }: ChangeLogEntryProps) {
@@ -47,6 +73,9 @@ export default function ChangeLogEntry({ entry, onViewDiff }: ChangeLogEntryProp
         <p className="text-foreground/80 truncate">{entry.description}</p>
         {entry.sceneName && (
           <p className="text-muted-foreground truncate text-[10px]">{entry.sceneName}</p>
+        )}
+        {entry.affectedSceneIds && entry.affectedSceneIds.length > 0 && (
+          <AffectedSceneBadges sceneIds={entry.affectedSceneIds} />
         )}
         <p className="text-muted-foreground text-[10px]">{entry.diff.summary}</p>
       </div>

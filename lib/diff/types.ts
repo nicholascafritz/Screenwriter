@@ -75,6 +75,9 @@ export interface TimelineEntry {
   /** Name of the scene affected, if applicable. */
   sceneName?: string;
 
+  /** Stable SceneIds of scenes whose fountain ranges overlap with this edit. */
+  affectedSceneIds?: string[];
+
   /** Whether this edit can be undone. */
   undoable: boolean;
 

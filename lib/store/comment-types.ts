@@ -35,4 +35,7 @@ export interface Comment {
 
   /** Unix timestamp (ms) of the last update. */
   updatedAt: number;
+
+  /** Stable SceneId of the scene this comment is anchored within, or null. */
+  sceneId: string | null;
 }

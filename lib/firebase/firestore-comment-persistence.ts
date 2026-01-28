@@ -50,6 +50,7 @@ export async function loadComments(
         resolved: data.resolved,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
+        sceneId: data.sceneId ?? null,
       } as Comment;
     });
   } catch {
@@ -81,6 +82,7 @@ export async function saveComments(
         resolved: comment.resolved,
         createdAt: comment.createdAt,
         updatedAt: comment.updatedAt,
+        sceneId: comment.sceneId ?? null,
       });
     }
 

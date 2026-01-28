@@ -17,7 +17,7 @@ import type {
   OutlineAct,
   OutlineSequence,
 } from './outline-types';
-import { reconcile } from '@/lib/outline/reconcile';
+import { reconcile, linkCharacters } from '@/lib/outline/reconcile';
 import { generateSceneId } from '@/lib/outline/id';
 import { detectStructure } from '@/lib/fountain/structure';
 import {
@@ -26,6 +26,7 @@ import {
   deleteOutline,
 } from '@/lib/firebase/firestore-outline-persistence';
 import { useProjectStore } from './project';
+import { useStoryBibleStore } from './story-bible';
 import { generateId } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -235,7 +236,11 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
     if (!projectId) return;
 
     const existingScenes = outline?.scenes ?? [];
-    const reconciledScenes = reconcile(screenplay.scenes, existingScenes);
+    let reconciledScenes = reconcile(screenplay.scenes, existingScenes);
+
+    // Link character profiles to scenes based on parsed dialogue.
+    const characters = useStoryBibleStore.getState().bible?.characters ?? [];
+    reconciledScenes = linkCharacters(reconciledScenes, screenplay.scenes, characters);
 
     // Derive acts and sequences from structure detection.
     const { acts, sequences } = deriveActsAndSequences(

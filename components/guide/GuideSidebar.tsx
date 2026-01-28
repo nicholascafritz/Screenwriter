@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
+import { useOutlineStore } from '@/lib/store/outline';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -20,6 +21,17 @@ import {
 
 export default function GuideSidebar() {
   const bible = useStoryBibleStore((s) => s.bible);
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+
+  /** Map from beat ID → beat name for display. */
+  const beatNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!bible) return map;
+    for (const beat of bible.beatSheet) {
+      map.set(beat.id, beat.beat);
+    }
+    return map;
+  }, [bible]);
 
   if (!bible) {
     return (
@@ -193,37 +205,39 @@ export default function GuideSidebar() {
         </section>
 
         {/* Outline Section */}
-        {(bible.outline?.length ?? 0) > 0 && (
+        {outlineScenes.length > 0 && (
           <section>
             <div className="flex items-center gap-1.5 mb-3">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Scene Outline ({bible.outline.length})
+                Scene Outline ({outlineScenes.length})
               </h3>
             </div>
             <div className="space-y-1.5">
-              {bible.outline.map((scene) => (
+              {outlineScenes.map((entry) => (
                 <div
-                  key={scene.sceneNumber}
+                  key={entry.id}
                   className="rounded-md border border-border bg-muted/30 p-2"
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground font-mono">
-                      {scene.sceneNumber}.
+                      {entry.sortIndex + 1}.
                     </span>
                     <span className="text-xs font-medium text-foreground truncate">
-                      {scene.heading}
+                      {entry.heading || 'Untitled Scene'}
                     </span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-                    {scene.summary}
-                  </p>
-                  {scene.beat && (
+                  {entry.summary && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                      {entry.summary}
+                    </p>
+                  )}
+                  {entry.beatId && beatNameMap.get(entry.beatId) && (
                     <Badge
                       variant="outline"
                       className="text-[8px] h-3.5 px-1 mt-1"
                     >
-                      {scene.beat}
+                      {beatNameMap.get(entry.beatId)}
                     </Badge>
                   )}
                 </div>

@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
+import { useOutlineStore } from '@/lib/store/outline';
+import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
+import type { OutlineEntry } from '@/lib/store/outline-types';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trash2, ChevronDown, ChevronRight, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, ChevronDown, ChevronRight, User, MapPin } from 'lucide-react';
 
 export default function CharactersTab() {
   const bible = useStoryBibleStore((s) => s.bible);
@@ -14,8 +18,30 @@ export default function CharactersTab() {
   const updateCharacter = useStoryBibleStore((s) => s.updateCharacter);
   const removeCharacter = useStoryBibleStore((s) => s.removeCharacter);
 
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+
+  /** Map from character ID → scenes where they appear. */
+  const scenesForCharacter = useMemo(() => {
+    const map = new Map<string, OutlineEntry[]>();
+    for (const scene of outlineScenes) {
+      for (const charId of scene.characterIds) {
+        const existing = map.get(charId) ?? [];
+        existing.push(scene);
+        map.set(charId, existing);
+      }
+    }
+    return map;
+  }, [outlineScenes]);
+
+  const handleSceneClick = useCallback((entry: OutlineEntry) => {
+    if (!entry.fountainRange) return;
+    const handle = getEditorHandle();
+    if (handle) {
+      handle.revealLine(entry.fountainRange.startLine);
+    }
+  }, []);
 
   if (!bible) return null;
 
@@ -65,6 +91,12 @@ export default function CharactersTab() {
                       <ChevronRight className="h-3 w-3 mr-1 shrink-0" />
                     )}
                     <span className="flex-1 truncate">{char.name}</span>
+                    {(scenesForCharacter.get(char.id)?.length ?? 0) > 0 && (
+                      <span className="text-[9px] text-sky-400 font-medium mr-1">
+                        {scenesForCharacter.get(char.id)!.length} scene
+                        {scenesForCharacter.get(char.id)!.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -108,6 +140,35 @@ export default function CharactersTab() {
                         className="text-xs min-h-[40px] resize-none"
                         rows={2}
                       />
+
+                      {/* Scene presence */}
+                      {(() => {
+                        const scenes = scenesForCharacter.get(char.id) ?? [];
+                        if (scenes.length === 0) return null;
+                        return (
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-muted-foreground font-medium">
+                              Appears in ({scenes.length})
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {scenes.map((scene) => (
+                                <Badge
+                                  key={scene.id}
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0 leading-4 gap-1 cursor-pointer hover:bg-accent/50"
+                                  onClick={() => handleSceneClick(scene)}
+                                  title={`Click to navigate to ${scene.location || scene.heading}`}
+                                >
+                                  <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                  <span className="truncate max-w-[80px]">
+                                    {scene.location || scene.heading || 'Untitled'}
+                                  </span>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

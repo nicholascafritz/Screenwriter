@@ -7,6 +7,7 @@ import { generateId } from '@/lib/utils';
 import type { Comment } from './comment-types';
 import { loadComments, saveComments, deleteCommentsForProject } from '@/lib/firebase/firestore-comment-persistence';
 import { useProjectStore } from './project';
+import { useOutlineStore } from './outline';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,6 +61,9 @@ export interface CommentState {
    * and update line positions accordingly.
    */
   reanchorComments: (oldContent: string, newContent: string) => void;
+
+  /** Get all comments for a particular scene. */
+  getCommentsForScene: (sceneId: string) => Comment[];
 }
 
 // ---------------------------------------------------------------------------
@@ -112,8 +116,12 @@ export const useCommentStore = create<CommentState>((set, get) => ({
 
   addComment: (comment) => {
     const now = Date.now();
+    // Auto-populate sceneId from the outline store if not provided.
+    const sceneId = comment.sceneId ??
+      useOutlineStore.getState().getSceneIdForLine(comment.startLine);
     const newComment: Comment = {
       ...comment,
+      sceneId,
       id: generateId(),
       createdAt: now,
       updatedAt: now,
@@ -196,15 +204,18 @@ export const useCommentStore = create<CommentState>((set, get) => ({
     const newLines = newContent.split('\n');
     let changed = false;
 
+    const outlineStore = useOutlineStore.getState();
     const updated = comments.map((comment) => {
       const newStart = findAnchorLine(newLines, comment.anchorText, comment.startLine);
       if (newStart !== null && newStart !== comment.startLine) {
         const delta = newStart - comment.startLine;
+        const newStartLine = newStart;
         changed = true;
         return {
           ...comment,
-          startLine: newStart,
+          startLine: newStartLine,
           endLine: comment.endLine + delta,
+          sceneId: outlineStore.getSceneIdForLine(newStartLine),
         };
       }
       return comment;
@@ -214,5 +225,9 @@ export const useCommentStore = create<CommentState>((set, get) => ({
       set({ comments: updated });
       schedulePersist();
     }
+  },
+
+  getCommentsForScene: (sceneId) => {
+    return get().comments.filter((c) => c.sceneId === sceneId);
   },
 }));

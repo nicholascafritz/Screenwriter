@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useProjectStore } from '@/lib/store/project';
 import { useEditorStore } from '@/lib/store/editor';
+import { useOutlineStore } from '@/lib/store/outline';
 import { outlineToFountain } from '@/lib/guide/outline-to-fountain';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -25,14 +26,24 @@ export default function GuideSummary() {
   const router = useRouter();
   const bible = useStoryBibleStore((s) => s.bible);
   const projectName = useProjectStore((s) => s.name);
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+
+  /** Map from beat ID → beat name for display. */
+  const beatNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!bible) return map;
+    for (const beat of bible.beatSheet) {
+      map.set(beat.id, beat.beat);
+    }
+    return map;
+  }, [bible]);
 
   if (!bible) return null;
 
   const completedBeats = bible.beatSheet.filter((b) => b.completed);
-  const outline = bible.outline ?? [];
 
   const handleGenerateSkeleton = () => {
-    const fountain = outlineToFountain(projectName, outline);
+    const fountain = outlineToFountain(projectName, outlineScenes, beatNameMap);
     useEditorStore.getState().setContent(fountain);
     useEditorStore.setState({ _lastCommittedContent: fountain });
     router.push('/editor');
@@ -55,7 +66,7 @@ export default function GuideSummary() {
         <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
           Your story is developed and ready to write.
           {completedBeats.length} beats defined
-          {outline.length > 0 && `, ${outline.length} scenes outlined`}.
+          {outlineScenes.length > 0 && `, ${outlineScenes.length} scenes outlined`}.
         </p>
       </div>
 
@@ -99,43 +110,38 @@ export default function GuideSummary() {
           </section>
 
           {/* Scene Outline */}
-          {outline.length > 0 && (
+          {outlineScenes.length > 0 && (
             <section>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-primary" />
-                Scene Outline ({outline.length} scenes)
+                Scene Outline ({outlineScenes.length} scenes)
               </h3>
               <div className="space-y-1.5">
-                {outline.map((scene) => (
+                {outlineScenes.map((entry) => (
                   <div
-                    key={scene.sceneNumber}
+                    key={entry.id}
                     className="rounded-md border border-border p-2.5 flex items-start gap-3"
                   >
                     <span className="text-xs text-muted-foreground font-mono shrink-0 w-6 text-right">
-                      {scene.sceneNumber}.
+                      {entry.sortIndex + 1}.
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-medium text-foreground">
-                        {scene.heading}
+                        {entry.heading || 'Untitled Scene'}
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {scene.summary}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {scene.beat && (
-                          <Badge
-                            variant="outline"
-                            className="text-[8px] h-3.5 px-1"
-                          >
-                            {scene.beat}
-                          </Badge>
-                        )}
-                        {scene.characters && scene.characters.length > 0 && (
-                          <span className="text-[9px] text-muted-foreground">
-                            {scene.characters.join(', ')}
-                          </span>
-                        )}
-                      </div>
+                      {entry.summary && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {entry.summary}
+                        </p>
+                      )}
+                      {entry.beatId && beatNameMap.get(entry.beatId) && (
+                        <Badge
+                          variant="outline"
+                          className="text-[8px] h-3.5 px-1 mt-1"
+                        >
+                          {beatNameMap.get(entry.beatId)}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -148,7 +154,7 @@ export default function GuideSummary() {
       {/* Action buttons */}
       <div className="shrink-0 border-t border-border p-6">
         <div className="flex items-center justify-center gap-4 max-w-lg mx-auto">
-          {outline.length > 0 && (
+          {outlineScenes.length > 0 && (
             <Button
               size="lg"
               className="gap-2 flex-1"
@@ -159,7 +165,7 @@ export default function GuideSummary() {
             </Button>
           )}
           <Button
-            variant={outline.length > 0 ? 'outline' : 'default'}
+            variant={outlineScenes.length > 0 ? 'outline' : 'default'}
             size="lg"
             className="gap-2 flex-1"
             onClick={handleStartBlank}

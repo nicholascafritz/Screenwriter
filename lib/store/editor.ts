@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 import type { Screenplay } from '@/lib/fountain/types';
-import type { DiffHunk } from '@/lib/diff/types';
+import type { DiffHunk, DiffResult } from '@/lib/diff/types';
 import { parseFountain } from '@/lib/fountain/parser';
 import { calculateDiff } from '@/lib/diff/engine';
 import { useTimelineStore } from './timeline';
@@ -209,6 +209,33 @@ function scheduleHumanEditCommit() {
   }, HUMAN_EDIT_DEBOUNCE_MS);
 }
 
+/**
+ * Compute which SceneIds are affected by a diff — i.e., which outline scenes
+ * have fountain ranges that overlap with any of the diff's modified-side hunks.
+ */
+function computeAffectedSceneIds(diff: DiffResult): string[] {
+  const scenes = useOutlineStore.getState().outline?.scenes ?? [];
+  if (scenes.length === 0 || diff.hunks.length === 0) return [];
+
+  const ids = new Set<string>();
+  for (const hunk of diff.hunks) {
+    // Use the modified-side line range to determine which scenes were affected.
+    const hunkStart = hunk.modifiedStart || hunk.originalStart;
+    const hunkEnd = hunk.modifiedEnd || hunk.originalEnd;
+    if (hunkStart === 0 && hunkEnd === 0) continue;
+
+    for (const scene of scenes) {
+      if (!scene.fountainRange) continue;
+      const { startLine, endLine } = scene.fountainRange;
+      // Check overlap.
+      if (hunkStart <= endLine && hunkEnd >= startLine) {
+        ids.add(scene.id);
+      }
+    }
+  }
+  return Array.from(ids);
+}
+
 // ---------------------------------------------------------------------------
 // Store implementation
 // ---------------------------------------------------------------------------
@@ -353,6 +380,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       source: 'human',
       description: `Manual edit: ${diff.summary}`,
       diff,
+      affectedSceneIds: computeAffectedSceneIds(diff),
       undoable: true,
     });
 
@@ -371,6 +399,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       description,
       diff,
       sceneName,
+      affectedSceneIds: computeAffectedSceneIds(diff),
       undoable: true,
     });
 

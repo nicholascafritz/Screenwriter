@@ -25,6 +25,8 @@ interface BeatCardProps {
   isActive: boolean;
   onClick: () => void;
   sceneIndex: number;
+  /** Display name of the assigned beat (from the beat sheet). */
+  beatName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,6 +82,7 @@ export default function BeatCard({
   isActive,
   onClick,
   sceneIndex,
+  beatName,
 }: BeatCardProps) {
   const isPlanned = entry.fountainRange === null;
   const elementCount = enrichment?.elementCount ?? 0;
@@ -130,11 +133,22 @@ export default function BeatCard({
           <Badge
             variant="outline"
             className={cn(
-              'text-[10px] px-1.5 py-0 leading-4 font-medium ml-auto',
+              'text-[10px] px-1.5 py-0 leading-4 font-medium',
+              !beatName && 'ml-auto',
               getStatusColor(entry.status),
             )}
           >
             {entry.status}
+          </Badge>
+        )}
+        {/* Beat assignment badge */}
+        {beatName && (
+          <Badge
+            variant="outline"
+            className="text-[10px] px-1.5 py-0 leading-4 font-medium ml-auto bg-amber-500/15 text-amber-400 border-amber-500/30 truncate max-w-[100px]"
+            title={beatName}
+          >
+            {beatName}
           </Badge>
         )}
       </div>

@@ -19,6 +19,7 @@ import type { Screenplay, Scene } from '@/lib/fountain/types';
 import { STRUCTURE_TOOLS, executeStructureToolCall } from './structure-tools';
 import { GUIDE_TOOLS, executeGuideToolCall, isGuideToolName } from './guide-tools';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
+import { useOutlineStore } from '@/lib/store/outline';
 
 // ---------------------------------------------------------------------------
 // Tool result type
@@ -1202,6 +1203,7 @@ function executeGetStoryBible(): ToolResult {
       return { result: 'No story bible found for this project.' };
     }
 
+    const outlineState = useOutlineStore.getState();
     const lines: string[] = ['## Story Bible', ''];
 
     // Overview
@@ -1245,8 +1247,9 @@ function executeGetStoryBible(): ToolResult {
     } else {
       for (const loc of bible.locations) {
         lines.push(`- **${loc.name}**${loc.description ? `: ${loc.description}` : ''}`);
-        if (loc.associatedScenes.length > 0) {
-          lines.push(`  Scenes: ${loc.associatedScenes.join(', ')}`);
+        const locScenes = outlineState.getScenesForLocation(loc.name);
+        if (locScenes.length > 0) {
+          lines.push(`  Scenes: ${locScenes.map((s) => s.heading).join(', ')}`);
         }
       }
     }
@@ -1264,8 +1267,9 @@ function executeGetStoryBible(): ToolResult {
       if (beat.description) {
         lines.push(`    ${beat.description}`);
       }
-      if (beat.sceneRefs.length > 0) {
-        lines.push(`    Scene refs: ${beat.sceneRefs.join(', ')}`);
+      const beatScenes = outlineState.getScenesForBeat(beat.id);
+      if (beatScenes.length > 0) {
+        lines.push(`    Scenes: ${beatScenes.map((s) => s.heading).join(', ')}`);
       }
     }
     lines.push('');

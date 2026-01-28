@@ -2,11 +2,11 @@
 // Outline to Fountain Converter
 // ---------------------------------------------------------------------------
 //
-// Converts a SceneOutlineEntry[] into a Fountain screenplay skeleton with
+// Converts an OutlineEntry[] into a Fountain screenplay skeleton with
 // scene headings, brief action lines, and beat reference notes.
 // ---------------------------------------------------------------------------
 
-import type { SceneOutlineEntry } from '@/lib/store/story-bible-types';
+import type { OutlineEntry } from '@/lib/store/outline-types';
 
 /**
  * Convert a scene outline into Fountain-formatted screenplay skeleton text.
@@ -16,13 +16,15 @@ import type { SceneOutlineEntry } from '@/lib/store/story-bible-types';
  *   - The summary as an action line
  *   - A Fountain note with the beat reference (if provided)
  *
- * @param title    - The project title for the title page.
- * @param entries  - The scene outline entries from the guide.
+ * @param title        - The project title for the title page.
+ * @param entries      - The outline entries from the persistent Outline store.
+ * @param beatNameMap  - Optional map from beat ID → beat display name.
  * @returns Fountain-formatted text ready for the editor.
  */
 export function outlineToFountain(
   title: string,
-  entries: SceneOutlineEntry[],
+  entries: OutlineEntry[],
+  beatNameMap?: Map<string, string>,
 ): string {
   const lines: string[] = [];
 
@@ -33,12 +35,15 @@ export function outlineToFountain(
 
   // Scenes.
   for (const entry of entries) {
-    lines.push(entry.heading);
+    lines.push(entry.heading || 'INT. UNTITLED - DAY');
     lines.push('');
-    lines.push(entry.summary);
-    lines.push('');
-    if (entry.beat) {
-      lines.push(`[[Beat: ${entry.beat}]]`);
+    if (entry.summary) {
+      lines.push(entry.summary);
+      lines.push('');
+    }
+    const beatName = entry.beatId ? beatNameMap?.get(entry.beatId) : undefined;
+    if (beatName) {
+      lines.push(`[[Beat: ${beatName}]]`);
       lines.push('');
     }
   }

@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useProjectStore } from '@/lib/store/project';
+import { useOutlineStore } from '@/lib/store/outline';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -116,12 +117,17 @@ function dispatchGuideToolCall(name: string, input: Record<string, unknown>) {
       break;
     }
     case 'generate_scene_outline': {
-      store.addOutlineScene({
-        sceneNumber: input.sceneNumber as number,
+      const outlineStore = useOutlineStore.getState();
+      const bible = useStoryBibleStore.getState().bible;
+      const lastScene = outlineStore.outline?.scenes.at(-1);
+      const beatName = input.beat as string | undefined;
+      const beatId = beatName
+        ? bible?.beatSheet.find((b) => b.beat === beatName)?.id ?? null
+        : null;
+      outlineStore.addPlannedScene(lastScene?.id ?? null, {
         heading: input.heading as string,
         summary: input.summary as string,
-        beat: input.beat as string | undefined,
-        characters: input.characters as string[] | undefined,
+        beatId,
       });
       break;
     }

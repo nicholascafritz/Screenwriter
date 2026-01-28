@@ -10,6 +10,7 @@
 
 import type { Scene } from '@/lib/fountain/types';
 import type { OutlineEntry } from '@/lib/store/outline-types';
+import type { CharacterProfile } from '@/lib/store/story-bible-types';
 import { generateSceneId } from './id';
 
 // ---------------------------------------------------------------------------
@@ -192,6 +193,53 @@ function updateEntryFromParse(
     // If it was 'planned' and now has Fountain text, upgrade to 'drafted'.
     status: existing.status === 'planned' ? 'drafted' : existing.status,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Character linking
+// ---------------------------------------------------------------------------
+
+/**
+ * Populate `characterIds` on OutlineEntry records by matching parsed scene
+ * character names (uppercase) against CharacterProfile names.
+ *
+ * Called after `reconcile()` to enrich entries with character presence data.
+ */
+export function linkCharacters(
+  entries: OutlineEntry[],
+  parsedScenes: Scene[],
+  characterProfiles: CharacterProfile[],
+): OutlineEntry[] {
+  if (characterProfiles.length === 0) return entries;
+
+  // Build a lookup from uppercase character name → profile ID.
+  const nameToId = new Map<string, string>();
+  for (const profile of characterProfiles) {
+    nameToId.set(profile.name.toUpperCase().trim(), profile.id);
+  }
+
+  // Build a lookup from startLine → parsed scene characters.
+  const lineToCharacters = new Map<number, string[]>();
+  for (const scene of parsedScenes) {
+    lineToCharacters.set(scene.startLine, scene.characters);
+  }
+
+  return entries.map((entry) => {
+    if (!entry.fountainRange) return entry;
+
+    const parsedCharacters = lineToCharacters.get(entry.fountainRange.startLine);
+    if (!parsedCharacters || parsedCharacters.length === 0) {
+      return { ...entry, characterIds: [] };
+    }
+
+    const characterIds: string[] = [];
+    for (const name of parsedCharacters) {
+      const id = nameToId.get(name.toUpperCase().trim());
+      if (id) characterIds.push(id);
+    }
+
+    return { ...entry, characterIds };
+  });
 }
 
 // ---------------------------------------------------------------------------

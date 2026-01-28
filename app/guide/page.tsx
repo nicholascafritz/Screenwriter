@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProjectStore } from '@/lib/store/project';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
+import { useOutlineStore } from '@/lib/store/outline';
 import AuthGate from '@/components/auth/AuthGate';
 import GuideChat from '@/components/guide/GuideChat';
 import GuideSidebar from '@/components/guide/GuideSidebar';
@@ -53,17 +54,18 @@ export default function GuidePage() {
     }
   }, [activeProjectId, router]);
 
-  // Load the story bible for this project.
+  // Load the story bible and outline for this project.
   useEffect(() => {
     if (activeProjectId && !bibleLoaded.current) {
       bibleLoaded.current = true;
       loadForProject(activeProjectId);
+      useOutlineStore.getState().loadForProject(activeProjectId);
     }
   }, [activeProjectId, loadForProject]);
 
   // Watch for outline completion to auto-transition to summary.
-  const outlineLength = useStoryBibleStore(
-    (s) => s.bible?.outline?.length ?? 0,
+  const outlineLength = useOutlineStore(
+    (s) => s.outline?.scenes.length ?? 0,
   );
 
   useEffect(() => {
@@ -81,8 +83,14 @@ export default function GuidePage() {
 
   const handleRequestOutline = () => {
     setIsFinalizingOutline(true);
-    // Clear any existing outline first.
-    useStoryBibleStore.getState().clearOutline();
+    // Remove existing planned scenes before regeneration.
+    const outlineStore = useOutlineStore.getState();
+    const planned = outlineStore.outline?.scenes.filter(
+      (s) => s.fountainRange === null,
+    ) ?? [];
+    for (const scene of planned) {
+      outlineStore.removeScene(scene.id);
+    }
   };
 
   const handleExit = () => {

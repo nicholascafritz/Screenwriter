@@ -53,6 +53,7 @@ export async function loadTimelineEntries(
         description: data.description,
         diff: data.diff,
         sceneName: data.sceneName,
+        affectedSceneIds: data.affectedSceneIds ?? undefined,
         undoable: data.undoable,
         projectId,
       } as TimelineEntry;
@@ -88,6 +89,7 @@ export async function saveTimelineEntries(
         description: entry.description,
         diff: entry.diff,
         sceneName: entry.sceneName ?? null,
+        affectedSceneIds: entry.affectedSceneIds ?? null,
         undoable: entry.undoable,
       });
     }

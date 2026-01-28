@@ -15,6 +15,7 @@ export interface LocationProfile {
   id: string;
   name: string;
   description: string;
+  /** @deprecated Use `useOutlineStore.getScenesForLocation()` instead. Kept for Firestore backward compat. */
   associatedScenes: string[];
 }
 
@@ -22,10 +23,12 @@ export interface BeatSheetEntry {
   id: string;
   beat: string;
   description: string;
+  /** @deprecated Use `useOutlineStore.getScenesForBeat()` instead. Kept for Firestore backward compat. */
   sceneRefs: string[];
   completed: boolean;
 }
 
+/** @deprecated Scene outline data now lives in the Outline store as OutlineEntry[]. */
 export interface SceneOutlineEntry {
   sceneNumber: number;
   heading: string;
@@ -44,7 +47,8 @@ export interface StoryBible {
   characters: CharacterProfile[];
   locations: LocationProfile[];
   beatSheet: BeatSheetEntry[];
-  outline: SceneOutlineEntry[];
+  /** @deprecated Scene outline data now lives in the Outline store. Kept for Firestore backward compat. */
+  outline?: SceneOutlineEntry[];
   customNotes: string;
   updatedAt: number;
 }

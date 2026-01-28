@@ -9,7 +9,6 @@ import type {
   CharacterProfile,
   LocationProfile,
   BeatSheetEntry,
-  SceneOutlineEntry,
 } from './story-bible-types';
 import { loadStoryBible, saveStoryBible, deleteStoryBible } from '@/lib/firebase/firestore-story-bible-persistence';
 import { useProjectStore } from './project';
@@ -98,11 +97,6 @@ export interface StoryBibleState {
 
   // Beat Sheet
   updateBeat: (id: string, updates: Partial<Omit<BeatSheetEntry, 'id' | 'beat'>>) => void;
-
-  // Outline
-  addOutlineScene: (entry: SceneOutlineEntry) => void;
-  setOutline: (entries: SceneOutlineEntry[]) => void;
-  clearOutline: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -248,17 +242,4 @@ export const useStoryBibleStore = create<StoryBibleState>((set, get) => ({
       ),
     })),
 
-  // -- Outline ----------------------------------------------------------------
-
-  addOutlineScene: (entry) =>
-    updateBible(set, (b) => ({
-      ...b,
-      outline: [...(b.outline ?? []), entry],
-    })),
-
-  setOutline: (entries) =>
-    updateBible(set, (b) => ({ ...b, outline: entries })),
-
-  clearOutline: () =>
-    updateBible(set, (b) => ({ ...b, outline: [] })),
 }));
