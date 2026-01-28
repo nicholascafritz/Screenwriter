@@ -9,7 +9,7 @@
 // Supports both drafted scenes (with Fountain text) and planned scenes.
 // ---------------------------------------------------------------------------
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { OutlineEntry } from '@/lib/store/outline-types';
 import type { SceneEnrichment } from './OutlinePanel';
@@ -27,6 +27,14 @@ interface BeatCardProps {
   sceneIndex: number;
   /** Display name of the assigned beat (from the beat sheet). */
   beatName?: string;
+  /** Whether the summary is being edited inline. */
+  isEditing?: boolean;
+  /** Called when the user saves a new summary value. */
+  onSummaryChange?: (summary: string) => void;
+  /** Called when editing completes (save or cancel). */
+  onEditComplete?: () => void;
+  /** Called on double-click to enter edit mode. */
+  onEditRequest?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,22 +91,42 @@ export default function BeatCard({
   onClick,
   sceneIndex,
   beatName,
+  isEditing,
+  onSummaryChange,
+  onEditComplete,
+  onEditRequest,
 }: BeatCardProps) {
   const isPlanned = entry.fountainRange === null;
   const elementCount = enrichment?.elementCount ?? 0;
   const characters = enrichment?.characters ?? [];
   const characterCount = characters.length;
   const lengthPercent = sceneLengthPercent(elementCount);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Approximate page fraction: ~56 lines per page, rough estimate of
   // 2 lines per element.
   const estimatedLines = elementCount * 2;
   const pageFraction = (estimatedLines / 56).toFixed(1);
 
+  // Auto-focus textarea when entering edit mode.
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditing]);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={isEditing ? undefined : onClick}
+      onKeyDown={(e) => {
+        if (!isEditing && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
         'group w-full text-left rounded-lg border px-3 py-2.5 transition-all',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -170,10 +198,50 @@ export default function BeatCard({
         </div>
       )}
 
-      {/* Summary (if present — from guide or manual entry) */}
-      {entry.summary && (
-        <div className="text-xs text-muted-foreground/70 mt-1 line-clamp-2 leading-snug">
+      {/* Summary -- inline edit or display */}
+      {isEditing ? (
+        <textarea
+          ref={textareaRef}
+          defaultValue={entry.summary}
+          className="w-full mt-1 text-xs bg-transparent border border-border rounded
+                     px-1.5 py-1 text-foreground resize-none focus:outline-none
+                     focus:ring-1 focus:ring-ring"
+          rows={3}
+          onBlur={(e) => {
+            onSummaryChange?.(e.target.value);
+            onEditComplete?.();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              onSummaryChange?.((e.target as HTMLTextAreaElement).value);
+              onEditComplete?.();
+            }
+            if (e.key === 'Escape') {
+              onEditComplete?.();
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : entry.summary ? (
+        <div
+          className="text-xs text-muted-foreground/70 mt-1 line-clamp-2 leading-snug cursor-text"
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            onEditRequest?.();
+          }}
+        >
           {entry.summary}
+        </div>
+      ) : (
+        <div
+          className="text-xs text-muted-foreground/40 mt-1 italic cursor-text"
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            onEditRequest?.();
+          }}
+        >
+          Double-click to add summary...
         </div>
       )}
 
@@ -219,6 +287,6 @@ export default function BeatCard({
           />
         </div>
       )}
-    </button>
+    </div>
   );
 }

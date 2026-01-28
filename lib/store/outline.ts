@@ -2,6 +2,15 @@
 // Outline Store -- Zustand state management for the structural spine
 // ---------------------------------------------------------------------------
 //
+// PRIMITIVES ARCHITECTURE:
+// The store exposes atomic primitives that can be composed by an orchestration
+// layer. The key primitives are:
+//
+// - reconcileOnly(scenes) — Match parsed scenes to OutlineEntries, no character linking
+// - linkCharactersOnly(scenes, parsedScenes, profiles) — Link character profiles
+// - deriveStructureOnly(screenplay, entries) — Compute acts/sequences
+// - reconcileFromParse(screenplay) — Composed: all three above + persist
+//
 // The Outline is the persistent scene identity layer.  After every Fountain
 // parse, `reconcileFromParse()` matches ephemeral parsed scenes to stable
 // OutlineEntry records.  All features (comments, beats, characters, timeline,
@@ -17,6 +26,7 @@ import type {
   OutlineAct,
   OutlineSequence,
 } from './outline-types';
+import type { CharacterProfile } from './story-bible-types';
 import { reconcile, linkCharacters } from '@/lib/outline/reconcile';
 import { generateSceneId } from '@/lib/outline/id';
 import { detectStructure } from '@/lib/fountain/structure';
@@ -57,11 +67,47 @@ export interface OutlineState {
   /** Clear in-memory state. */
   clear: () => void;
 
-  // --- Reconciliation ------------------------------------------------------
+  // --- Reconciliation Primitives --------------------------------------------
+
+  /**
+   * Reconcile parsed scenes to OutlineEntries without linking characters.
+   * Returns the reconciled entries. Does NOT update store state.
+   * Use this when you need just the identity matching step.
+   */
+  reconcileOnly: (parsedScenes: Scene[]) => OutlineEntry[];
+
+  /**
+   * Link character profiles to outline entries based on parsed dialogue.
+   * Returns the updated entries. Does NOT update store state.
+   * Use this after reconcileOnly when character linking is needed.
+   */
+  linkCharactersOnly: (
+    entries: OutlineEntry[],
+    parsedScenes: Scene[],
+    characterProfiles: CharacterProfile[],
+  ) => OutlineEntry[];
+
+  /**
+   * Derive acts and sequences from structure detection.
+   * Returns the acts/sequences arrays. Does NOT update store state.
+   */
+  deriveStructureOnly: (
+    screenplay: Screenplay,
+    entries: OutlineEntry[],
+  ) => { acts: OutlineAct[]; sequences: OutlineSequence[] };
+
+  /**
+   * Set the full outline state. Low-level primitive for orchestration.
+   * This triggers persistence.
+   */
+  setOutline: (outline: Outline) => void;
+
+  // --- Composed Reconciliation ---------------------------------------------
 
   /**
    * Reconcile the outline against a fresh Fountain parse.
-   * This is the core method — called after every parseContent() in the editor.
+   * This is a composed method that calls: reconcileOnly → linkCharactersOnly → deriveStructureOnly → setOutline
+   * Called after every parseContent() in the editor.
    */
   reconcileFromParse: (screenplay: Screenplay) => void;
 
@@ -81,6 +127,9 @@ export interface OutlineState {
 
   /** Remove an outline entry entirely. */
   removeScene: (id: SceneId) => void;
+
+  /** Reorder a scene to a new position in the outline. */
+  reorderScene: (id: SceneId, newIndex: number) => void;
 
   // --- Beat operations -----------------------------------------------------
 
@@ -229,25 +278,53 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
     set({ outline: null, projectId: null, isLoaded: false });
   },
 
-  // --- Reconciliation ------------------------------------------------------
+  // --- Reconciliation Primitives --------------------------------------------
+
+  reconcileOnly: (parsedScenes) => {
+    const existingScenes = get().outline?.scenes ?? [];
+    return reconcile(parsedScenes, existingScenes);
+  },
+
+  linkCharactersOnly: (entries, parsedScenes, characterProfiles) => {
+    return linkCharacters(entries, parsedScenes, characterProfiles);
+  },
+
+  deriveStructureOnly: (screenplay, entries) => {
+    return deriveActsAndSequences(screenplay, entries);
+  },
+
+  setOutline: (outline) => {
+    set({ outline });
+    schedulePersist();
+  },
+
+  // --- Composed Reconciliation ---------------------------------------------
 
   reconcileFromParse: (screenplay) => {
-    const { outline, projectId } = get();
+    const { projectId } = get();
     if (!projectId) return;
 
-    const existingScenes = outline?.scenes ?? [];
-    let reconciledScenes = reconcile(screenplay.scenes, existingScenes);
+    // 1. Reconcile scene identities (primitive)
+    let reconciledScenes = get().reconcileOnly(screenplay.scenes);
 
-    // Link character profiles to scenes based on parsed dialogue.
+    // 2. Link character profiles (primitive)
+    // NOTE: This still calls useStoryBibleStore.getState() which is a coupling violation.
+    // The orchestration layer should pass characters as a parameter instead.
+    // For backward compatibility, we keep this behavior in the composed method.
     const characters = useStoryBibleStore.getState().bible?.characters ?? [];
-    reconciledScenes = linkCharacters(reconciledScenes, screenplay.scenes, characters);
+    reconciledScenes = get().linkCharactersOnly(
+      reconciledScenes,
+      screenplay.scenes,
+      characters,
+    );
 
-    // Derive acts and sequences from structure detection.
-    const { acts, sequences } = deriveActsAndSequences(
+    // 3. Derive acts and sequences (primitive)
+    const { acts, sequences } = get().deriveStructureOnly(
       screenplay,
       reconciledScenes,
     );
 
+    // 4. Set the full outline (primitive)
     const newOutline: Outline = {
       projectId,
       scenes: reconciledScenes,
@@ -256,8 +333,7 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
       updatedAt: Date.now(),
     };
 
-    set({ outline: newOutline });
-    schedulePersist();
+    get().setOutline(newOutline);
   },
 
   // --- Scene operations ----------------------------------------------------
@@ -314,6 +390,24 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
       const scenes = outline.scenes
         .filter((s) => s.id !== id)
         .map((s, i) => ({ ...s, sortIndex: i }));
+      return { ...outline, scenes };
+    });
+  },
+
+  reorderScene: (id, newIndex) => {
+    updateOutline(set, (outline) => {
+      const scenes = [...outline.scenes];
+      const oldIndex = scenes.findIndex((s) => s.id === id);
+      if (oldIndex === -1 || oldIndex === newIndex) return outline;
+
+      const [moved] = scenes.splice(oldIndex, 1);
+      scenes.splice(newIndex, 0, moved);
+
+      // Re-index sortIndex.
+      for (let i = 0; i < scenes.length; i++) {
+        scenes[i] = { ...scenes[i], sortIndex: i };
+      }
+
       return { ...outline, scenes };
     });
   },
