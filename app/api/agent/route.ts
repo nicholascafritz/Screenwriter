@@ -4,17 +4,25 @@
 //
 // Full autonomous agent mode endpoint.  Accepts a user message with
 // screenplay context, first asks Claude to create a plan, then executes
-// that plan step-by-step using tool calls.  Streams progress back as
-// newline-delimited JSON.
+// that plan step-by-step using tool calls.
+//
+// Multimodel routing:
+//   - Planning phase:   Opus 4.5 + thinking  (deepest strategic reasoning)
+//   - Execution phase:  Sonnet 4.5 + thinking (creative writing with tools)
+//
+// This two-model approach uses the strongest model (Opus) for the high-level
+// planning that determines the overall approach, then delegates creative
+// execution to Sonnet with thinking for fast, high-quality screenplay output.
 //
 // Streaming format (newline-delimited JSON):
+//   {"type":"metadata","phase":"plan","model":"...","thinking":true}
 //   {"type":"plan","plan":{"steps":["...","..."],"summary":"..."}}
+//   {"type":"metadata","phase":"execute","model":"...","thinking":true}
 //   {"type":"step","index":0,"status":"in_progress","description":"..."}
 //   {"type":"text","content":"..."}
 //   {"type":"tool_call","name":"edit_scene","input":{...}}
 //   {"type":"tool_result","name":"edit_scene","result":"...","updatedScreenplay":"..."}
 //   {"type":"step","index":0,"status":"completed"}
-//   {"type":"step","index":1,"status":"in_progress","description":"..."}
 //   ...
 //   {"type":"done"}
 // ---------------------------------------------------------------------------
@@ -28,6 +36,8 @@ import { buildSystemPrompt } from '@/lib/agent/prompts';
 import { SCREENPLAY_TOOLS, executeToolCall } from '@/lib/agent/tools';
 import { getVoiceById, PRESET_VOICES } from '@/lib/agent/voices';
 import { computePatch } from '@/lib/diff/patch-transport';
+import { buildModelParams } from '@/lib/ai/models';
+import { getModelForTask } from '@/lib/ai/model-router';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,9 +62,11 @@ interface AgentPlan {
 /** Maximum tool-use loop iterations to prevent infinite loops. */
 const MAX_ITERATIONS = 20;
 
-/** Model configuration for agent mode (higher token budget). */
-const MODEL = 'claude-sonnet-4-5-20250929';
-const MAX_TOKENS = 8192;
+/** Model configuration for the planning phase (Opus + thinking). */
+const PLAN_MODEL = getModelForTask('agent-plan');
+
+/** Model configuration for the execution phase (Sonnet + thinking). */
+const EXECUTE_MODEL = getModelForTask('agent-execute');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -171,10 +183,18 @@ export async function POST(request: NextRequest) {
 
 /**
  * Runs the full agent loop:
- * 1. Asks Claude to create a plan for the requested task.
+ * 1. (Opus + thinking) Asks Claude to create a plan for the requested task.
  * 2. Streams the plan to the client.
- * 3. Executes the plan by continuing the conversation with tool calls.
+ * 3. (Sonnet + thinking) Executes the plan by continuing the conversation with tool calls.
  * 4. Streams each step's progress.
+ *
+ * The planning phase uses Opus with extended thinking for the deepest
+ * strategic reasoning.  The execution phase switches to Sonnet with
+ * thinking for fast, high-quality creative output with tool coordination.
+ *
+ * Because the execution phase starts a fresh conversation (with the plan
+ * context), there is no cross-model thinking block conflict — each model
+ * operates within its own conversation history.
  *
  * Returns the final screenplay text.
  */
@@ -188,8 +208,20 @@ async function runAgentLoop(
   let currentScreenplay = screenplay;
 
   // -----------------------------------------------------------------------
-  // Phase 1: Ask Claude to create a plan
+  // Phase 1: Ask Claude (Opus + thinking) to create a plan
   // -----------------------------------------------------------------------
+
+  // Emit metadata for the planning phase.
+  controller.enqueue(
+    encodeChunk({
+      type: 'metadata',
+      phase: 'plan',
+      model: PLAN_MODEL.model,
+      label: PLAN_MODEL.label,
+      thinking: !!PLAN_MODEL.thinking,
+    }),
+  );
+
   const planMessages: Anthropic.MessageParam[] = [
     ...messages,
     {
@@ -212,10 +244,12 @@ async function runAgentLoop(
     },
   ];
 
+  // Build Opus model parameters for the planning call.
+  const planModelParams = buildModelParams(PLAN_MODEL);
+
   // Use a non-streaming call for the plan to reliably parse the JSON.
   const planResponse = await client.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
+    ...planModelParams,
     system: systemPrompt,
     messages: planMessages,
     tools: formatToolsForAPI(),
@@ -238,17 +272,39 @@ async function runAgentLoop(
     }
   }
 
-  // Add the plan response to the message history.
-  // Replace the planning prompt with the original messages.
+  // -----------------------------------------------------------------------
+  // Phase 2: Execute the plan step-by-step (Sonnet + thinking)
+  // -----------------------------------------------------------------------
+
+  // Emit metadata for the execution phase.
+  controller.enqueue(
+    encodeChunk({
+      type: 'metadata',
+      phase: 'execute',
+      model: EXECUTE_MODEL.model,
+      label: EXECUTE_MODEL.label,
+      thinking: !!EXECUTE_MODEL.thinking,
+    }),
+  );
+
+  // Build a fresh conversation for execution (avoids cross-model thinking
+  // block issues).  Include the original user request and the plan summary
+  // so the execution model has full context.
   const executionMessages: Anthropic.MessageParam[] = [
     ...messages,
   ];
 
-  // Add an assistant message containing the plan.
-  executionMessages.push({
-    role: 'assistant',
-    content: planResponse.content,
-  });
+  // Inject the plan as an assistant message (text only, no thinking blocks
+  // from the Opus call — those belong to a different model's conversation).
+  const planTextBlocks = planResponse.content.filter(
+    (block): block is Anthropic.TextBlock => block.type === 'text',
+  );
+  if (planTextBlocks.length > 0) {
+    executionMessages.push({
+      role: 'assistant',
+      content: planTextBlocks,
+    });
+  }
 
   // Add a user message instructing Claude to execute the plan.
   executionMessages.push({
@@ -259,9 +315,9 @@ async function runAgentLoop(
       'executing it.',
   });
 
-  // -----------------------------------------------------------------------
-  // Phase 2: Execute the plan step-by-step
-  // -----------------------------------------------------------------------
+  // Build Sonnet model parameters for execution.
+  const execModelParams = buildModelParams(EXECUTE_MODEL);
+
   let stepIndex = 0;
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
@@ -277,10 +333,9 @@ async function runAgentLoop(
       );
     }
 
-    // Stream the next response from Claude.
+    // Stream the next response from Claude using the execution model.
     const stream = client.messages.stream({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+      ...execModelParams,
       system: systemPrompt,
       messages: executionMessages,
       tools: formatToolsForAPI(),
@@ -379,6 +434,8 @@ async function runAgentLoop(
     }
 
     // Append the assistant response and tool results for the next iteration.
+    // Thinking blocks from Sonnet are preserved in the content array to
+    // satisfy the API requirement for multi-turn thinking conversations.
     executionMessages.push({
       role: 'assistant',
       content: finalMessage.content,
