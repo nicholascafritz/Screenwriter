@@ -284,6 +284,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Load the structural outline for this project.
     await useOutlineStore.getState().loadForProject(id);
 
+    // Reconcile the outline with the parsed screenplay to ensure scenes are synced.
+    const screenplay = useEditorStore.getState().screenplay;
+    const outlineStore = useOutlineStore.getState();
+    if (screenplay && outlineStore.isLoaded) {
+      outlineStore.reconcileFromParse(screenplay);
+    }
+
     // Load chat sessions.
     const chatStore = useChatStore.getState();
     await chatStore.loadSessionsForProject(id);

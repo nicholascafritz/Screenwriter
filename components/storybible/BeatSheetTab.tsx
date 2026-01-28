@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useStoryBibleStore, SAVE_THE_CAT_BEATS } from '@/lib/store/story-bible';
 import { useOutlineStore } from '@/lib/store/outline';
+import { EMPTY_SCENES } from '@/lib/store/selector-utils';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import type { OutlineEntry } from '@/lib/store/outline-types';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +15,7 @@ import { Check, ChevronDown, ChevronRight, X, MapPin } from 'lucide-react';
 export default function BeatSheetTab() {
   const bible = useStoryBibleStore((s) => s.bible);
   const updateBeat = useStoryBibleStore((s) => s.updateBeat);
-  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? EMPTY_SCENES);
   const assignBeat = useOutlineStore((s) => s.assignBeat);
   const unassignBeat = useOutlineStore((s) => s.unassignBeat);
   const [expandedId, setExpandedId] = useState<string | null>(null);

@@ -5,6 +5,7 @@ import { useCommentStore } from '@/lib/store/comments';
 import { useEditorStore } from '@/lib/store/editor';
 import { useProjectStore } from '@/lib/store/project';
 import { useOutlineStore } from '@/lib/store/outline';
+import { EMPTY_SCENES } from '@/lib/store/selector-utils';
 import type { Comment } from '@/lib/store/comment-types';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -39,7 +40,7 @@ export default function CommentsPanel({ className }: CommentsPanelProps) {
   const cursorLine = useEditorStore((s) => s.cursorLine);
   const selection = useEditorStore((s) => s.selection);
   const projectId = useProjectStore((s) => s.activeProjectId);
-  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? EMPTY_SCENES);
 
   /** Map from SceneId → location name for display. */
   const sceneNameMap = useMemo(() => {

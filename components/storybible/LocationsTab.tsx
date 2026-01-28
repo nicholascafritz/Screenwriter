@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useEditorStore } from '@/lib/store/editor';
 import { useOutlineStore } from '@/lib/store/outline';
+import { EMPTY_SCENES } from '@/lib/store/selector-utils';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import type { OutlineEntry } from '@/lib/store/outline-types';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,7 @@ export default function LocationsTab() {
   const removeLocation = useStoryBibleStore((s) => s.removeLocation);
   const screenplay = useEditorStore((s) => s.screenplay);
 
-  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? EMPTY_SCENES);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
 

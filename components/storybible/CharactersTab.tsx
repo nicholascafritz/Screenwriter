@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useOutlineStore } from '@/lib/store/outline';
+import { EMPTY_SCENES } from '@/lib/store/selector-utils';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import type { OutlineEntry } from '@/lib/store/outline-types';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,7 @@ export default function CharactersTab() {
   const updateCharacter = useStoryBibleStore((s) => s.updateCharacter);
   const removeCharacter = useStoryBibleStore((s) => s.removeCharacter);
 
-  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? []);
+  const outlineScenes = useOutlineStore((s) => s.outline?.scenes ?? EMPTY_SCENES);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
 
