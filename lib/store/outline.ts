@@ -302,16 +302,10 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
 
   reconcileFromParse: (screenplay) => {
     const { projectId } = get();
-    console.log('[reconcileFromParse] projectId:', projectId);
-    console.log('[reconcileFromParse] screenplay.scenes.length:', screenplay.scenes.length);
-    if (!projectId) {
-      console.log('[reconcileFromParse] EARLY RETURN - no projectId');
-      return;
-    }
+    if (!projectId) return;
 
     // 1. Reconcile scene identities (primitive)
     let reconciledScenes = get().reconcileOnly(screenplay.scenes);
-    console.log('[reconcileFromParse] reconciledScenes:', reconciledScenes.length);
 
     // 2. Link character profiles (primitive)
     // NOTE: This still calls useStoryBibleStore.getState() which is a coupling violation.
@@ -339,9 +333,7 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
       updatedAt: Date.now(),
     };
 
-    console.log('[reconcileFromParse] calling setOutline with', reconciledScenes.length, 'scenes');
     get().setOutline(newOutline);
-    console.log('[reconcileFromParse] after setOutline, outline:', get().outline?.scenes.length);
   },
 
   // --- Scene operations ----------------------------------------------------
