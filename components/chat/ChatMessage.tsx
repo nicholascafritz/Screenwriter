@@ -5,6 +5,8 @@
 // ---------------------------------------------------------------------------
 
 import React, { useState, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { useChatStore, type ChatMessage as ChatMessageType } from '@/lib/store/chat';
 import { ChevronDown, ChevronRight, Wrench, User, Bot, Info, GitBranch, Minimize2 } from 'lucide-react';
@@ -30,107 +32,66 @@ function formatTime(timestamp: number): string {
 }
 
 /**
- * Apply simple markdown-like formatting to message content.
+ * Render message content as formatted markdown using react-markdown.
  *
- * Supports:
- *   - **bold**
- *   - *italic*
- *   - `inline code`
- *   - ```code blocks```
- *
- * Returns an array of React nodes.
+ * Supports headings, bold, italic, inline code, code blocks, lists,
+ * blockquotes, links, tables, horizontal rules, and more via GFM.
  */
-function renderFormattedContent(content: string): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-
-  // Split on code blocks first (triple-backtick).
-  const codeBlockParts = content.split(/(```[\s\S]*?```)/g);
-
-  for (let i = 0; i < codeBlockParts.length; i++) {
-    const part = codeBlockParts[i];
-
-    if (part.startsWith('```') && part.endsWith('```')) {
-      // Code block -- strip the backtick fences.
-      const code = part.slice(3, -3).replace(/^\w*\n/, '');
-      nodes.push(
-        <pre
-          key={`code-${i}`}
-          className="my-2 overflow-x-auto rounded-md bg-black/30 p-3 text-xs leading-relaxed"
-        >
-          <code>{code}</code>
-        </pre>,
-      );
-    } else {
-      // Inline formatting for non-code-block text.
-      const inlineNodes = renderInlineFormatting(part, i);
-      nodes.push(...inlineNodes);
-    }
-  }
-
-  return nodes;
-}
-
-function renderInlineFormatting(text: string, keyPrefix: number): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-
-  // Split on inline code first.
-  const inlineParts = text.split(/(`[^`]+`)/g);
-
-  for (let j = 0; j < inlineParts.length; j++) {
-    const segment = inlineParts[j];
-
-    if (segment.startsWith('`') && segment.endsWith('`')) {
-      nodes.push(
-        <code
-          key={`inline-${keyPrefix}-${j}`}
-          className="rounded bg-black/20 px-1 py-0.5 text-xs font-mono"
-        >
-          {segment.slice(1, -1)}
-        </code>,
-      );
-    } else {
-      // Apply bold and italic.
-      let formatted: React.ReactNode = segment;
-
-      // Bold: **text**
-      const boldParts = segment.split(/(\*\*[^*]+\*\*)/g);
-      if (boldParts.length > 1) {
-        formatted = boldParts.map((bp, bi) => {
-          if (bp.startsWith('**') && bp.endsWith('**')) {
+function FormattedContent({ content, isUser }: { content: string; isUser?: boolean }) {
+  return (
+    <div className={cn('chat-markdown', isUser && 'chat-markdown-user')}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Code blocks and inline code
+          code({ className, children, ...props }) {
+            const isBlock = className?.startsWith('language-');
+            if (isBlock) {
+              return (
+                <code className={cn(className, 'text-xs')} {...props}>
+                  {children}
+                </code>
+              );
+            }
             return (
-              <strong key={`b-${keyPrefix}-${j}-${bi}`}>
-                {bp.slice(2, -2)}
-              </strong>
+              <code
+                className="rounded bg-black/20 px-1 py-0.5 text-xs font-mono"
+                {...props}
+              >
+                {children}
+              </code>
             );
-          }
-          // Italic within non-bold: *text*
-          return renderItalic(bp, `${keyPrefix}-${j}-${bi}`);
-        });
-      } else {
-        formatted = renderItalic(segment, `${keyPrefix}-${j}`);
-      }
-
-      nodes.push(
-        <React.Fragment key={`text-${keyPrefix}-${j}`}>
-          {formatted}
-        </React.Fragment>,
-      );
-    }
-  }
-
-  return nodes;
-}
-
-function renderItalic(text: string, key: string): React.ReactNode {
-  const italicParts = text.split(/(\*[^*]+\*)/g);
-  if (italicParts.length <= 1) return text;
-
-  return italicParts.map((ip, ii) => {
-    if (ip.startsWith('*') && ip.endsWith('*') && !ip.startsWith('**')) {
-      return <em key={`i-${key}-${ii}`}>{ip.slice(1, -1)}</em>;
-    }
-    return ip;
-  });
+          },
+          pre({ children, ...props }) {
+            return (
+              <pre
+                className="my-2 overflow-x-auto rounded-md bg-black/30 p-3 text-xs leading-relaxed"
+                {...props}
+              >
+                {children}
+              </pre>
+            );
+          },
+          // Links open in new tab
+          a({ children, href, ...props }) {
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:opacity-80"
+                {...props}
+              >
+                {children}
+              </a>
+            );
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -234,8 +195,8 @@ function ContextSummaryCard({ content }: { content: string }) {
         </span>
       </button>
       {isExpanded && (
-        <div className="border-t border-border/40 px-3 py-2 text-xs text-muted-foreground whitespace-pre-wrap">
-          {renderFormattedContent(summaryText)}
+        <div className="border-t border-border/40 px-3 py-2 text-xs text-muted-foreground">
+          <FormattedContent content={summaryText} />
         </div>
       )}
     </div>
@@ -317,8 +278,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         )}
 
         {/* Content */}
-        <div className="whitespace-pre-wrap break-words">
-          {renderFormattedContent(message.content)}
+        <div className="break-words">
+          <FormattedContent content={message.content} isUser={isUser} />
           {message.isStreaming && <StreamingIndicator />}
         </div>
 
