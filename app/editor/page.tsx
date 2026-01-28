@@ -9,7 +9,7 @@ import { debounce } from '@/lib/utils';
 import { processFiles } from '@/lib/upload/processor';
 import AuthGate from '@/components/auth/AuthGate';
 import ScreenplayEditor from '@/components/editor/ScreenplayEditor';
-import DiffViewer from '@/components/editor/DiffViewer';
+import SimpleDiffViewer from '@/components/editor/SimpleDiffViewer';
 import ScreenplayPreview from '@/components/editor/ScreenplayPreview';
 import ExportMenu from '@/components/editor/ExportMenu';
 import ChatPanel from '@/components/chat/ChatPanel';
@@ -489,7 +489,7 @@ export default function EditorPage() {
             <OperationLog />
             {/* Show pending proposal diff when in Ask mode and there's a proposal */}
             {pendingProposal ? (
-              <DiffViewer
+              <SimpleDiffViewer
                 original={content}
                 modified={pendingProposal}
                 onAccept={acceptPendingProposal}
@@ -497,7 +497,7 @@ export default function EditorPage() {
                 className="flex-1"
               />
             ) : showDiff ? (
-              <DiffViewer
+              <SimpleDiffViewer
                 original={diffOriginal}
                 modified={diffModified}
                 onAccept={handleAcceptDiff}
