@@ -418,6 +418,7 @@ export function executeToolCall(
     case 'read_act':
     case 'get_act_analysis':
     case 'analyze_narrative_arc':
+    case 'compare_structure':
       return executeStructureToolCall(name, input, screenplay);
     default:
       return { result: `Unknown tool: ${name}` };
@@ -1787,7 +1788,7 @@ const READ_ONLY_TOOLS = new Set([
   'read_screenplay', 'read_scene', 'search_screenplay',
   'get_outline', 'get_characters', 'get_statistics',
   'validate_format', 'dialogue', 'get_story_bible',
-  'get_structure', 'read_act', 'get_act_analysis', 'analyze_narrative_arc',
+  'get_structure', 'read_act', 'get_act_analysis', 'analyze_narrative_arc', 'compare_structure',
 ]);
 
 /**

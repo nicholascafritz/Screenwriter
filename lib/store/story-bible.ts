@@ -17,21 +17,21 @@ import { useProjectStore } from './project';
 // Save the Cat Beat Sheet Template
 // ---------------------------------------------------------------------------
 
-export const SAVE_THE_CAT_BEATS: { beat: string; hint: string }[] = [
+export const SAVE_THE_CAT_BEATS: { beat: string; hint: string; pageGuide?: string }[] = [
   { beat: 'Opening Image', hint: 'A snapshot of the protagonist\'s world before the journey begins.' },
   { beat: 'Theme Stated', hint: 'Someone states the theme (often to the protagonist) within the first 5 pages.' },
   { beat: 'Set-Up', hint: 'Introduce the main characters, the world, and what needs fixing.' },
-  { beat: 'Catalyst', hint: 'The inciting incident that sets the story in motion.' },
+  { beat: 'Catalyst', hint: 'The inciting incident that sets the story in motion.', pageGuide: 'Typically ~p.14 (range p.9-20) based on 84 films.' },
   { beat: 'Debate', hint: 'The protagonist hesitates — should they accept the challenge?' },
-  { beat: 'Break into Two', hint: 'The protagonist commits to the journey. Act 2 begins.' },
+  { beat: 'Break into Two', hint: 'The protagonist commits to the journey. Act 2 begins.', pageGuide: 'Typically ~p.36 (range p.25-46) based on 84 films.' },
   { beat: 'B Story', hint: 'A new character or subplot that carries the theme.' },
   { beat: 'Fun and Games', hint: 'The promise of the premise — what the audience came to see.' },
-  { beat: 'Midpoint', hint: 'A false victory or false defeat that raises the stakes.' },
+  { beat: 'Midpoint', hint: 'A false victory or false defeat that raises the stakes.', pageGuide: 'Typically ~p.63 (range p.54-70) based on 84 films.' },
   { beat: 'Bad Guys Close In', hint: 'External pressure mounts and internal flaws resurface.' },
   { beat: 'All Is Lost', hint: 'The lowest point. Something or someone is lost.' },
   { beat: 'Dark Night of the Soul', hint: 'The protagonist faces despair and must dig deep.' },
-  { beat: 'Break into Three', hint: 'A new idea or inspiration sparks the final push.' },
-  { beat: 'Finale', hint: 'The protagonist faces the final challenge, applying lessons learned.' },
+  { beat: 'Break into Three', hint: 'A new idea or inspiration sparks the final push.', pageGuide: 'Typically ~p.89 (range p.81-95) based on 84 films.' },
+  { beat: 'Finale', hint: 'The protagonist faces the final challenge, applying lessons learned.', pageGuide: 'Typically ~p.107 (range p.102-112) based on 84 films.' },
   { beat: 'Final Image', hint: 'A mirror of the opening image showing how things have changed.' },
 ];
 

@@ -2,8 +2,9 @@
 // AI Agent -- Structural Navigation Tools
 // ---------------------------------------------------------------------------
 //
-// Four read-only tools that give the AI structural awareness of the
-// screenplay: acts, sequences, narrative arcs, and pacing diagnostics.
+// Five read-only tools that give the AI structural awareness of the
+// screenplay: acts, sequences, narrative arcs, and TRIPOD-backed
+// structural comparison against professional film norms.
 //
 // Usage:
 //   import { STRUCTURE_TOOLS, executeStructureToolCall } from './structure-tools';
@@ -11,6 +12,7 @@
 
 import { parseFountain } from '@/lib/fountain/parser';
 import { detectStructure } from '@/lib/fountain/structure';
+import { analyzeScreenplayStructure, formatTripodComparison } from '@/lib/tripod/analysis';
 import type { ToolDefinition, ToolResult } from './tools';
 
 // ---------------------------------------------------------------------------
@@ -66,12 +68,28 @@ export const STRUCTURE_TOOLS: ToolDefinition[] = [
     },
   },
 
-  // 4. analyze_narrative_arc
+  // 4. analyze_narrative_arc (TRIPOD-enhanced)
   {
     name: 'analyze_narrative_arc',
     description:
-      'Map the narrative arc across the full screenplay: inciting incident, rising action, ' +
-      'midpoint, climax, resolution. Identifies structural strengths and weaknesses.',
+      'Map the narrative arc across the full screenplay using empirical turning point data ' +
+      'from 84 professionally produced films. Detects all five turning points (Opportunity, ' +
+      'Change of Plans, Point of No Return, Major Setback, Climax) and compares their positions ' +
+      'against professional norms. Identifies structural strengths and weaknesses with data-backed analysis.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  // 5. compare_structure (new — TRIPOD comparison)
+  {
+    name: 'compare_structure',
+    description:
+      'Compare the screenplay\'s structural pacing against empirical turning point data ' +
+      'from 84 professionally produced films. Returns a detailed comparison showing where ' +
+      'each turning point falls vs. the expected range, with diagnostic flags and examples ' +
+      'from similar films. Use this when the writer asks about pacing, structure, or act balance.',
     input_schema: {
       type: 'object',
       properties: {},
@@ -103,6 +121,8 @@ export function executeStructureToolCall(
       return executeGetActAnalysis(parsed, structure, input);
     case 'analyze_narrative_arc':
       return executeAnalyzeNarrativeArc(parsed, structure);
+    case 'compare_structure':
+      return executeCompareStructure(parsed);
     default:
       return { result: `Unknown structure tool: ${name}` };
   }
@@ -328,6 +348,10 @@ function executeGetActAnalysis(
   return { result: lines.join('\n') };
 }
 
+// ---------------------------------------------------------------------------
+// TRIPOD-Enhanced Narrative Arc Analysis
+// ---------------------------------------------------------------------------
+
 function executeAnalyzeNarrativeArc(
   parsed: ReturnType<typeof parseFountain>,
   structure: ReturnType<typeof detectStructure>,
@@ -336,79 +360,17 @@ function executeAnalyzeNarrativeArc(
     return { result: 'No scenes found in the screenplay.' };
   }
 
-  const lines: string[] = [
-    '## Narrative Arc Analysis',
-    '',
-  ];
+  // Run TRIPOD-enhanced analysis
+  const comparison = analyzeScreenplayStructure(parsed);
+  const tripodReport = formatTripodComparison(comparison);
 
   const totalScenes = parsed.scenes.length;
+  const lines: string[] = [tripodReport];
 
   // -----------------------------------------------------------------------
-  // Identify structural beats using heuristics
+  // Additional structural diagnostics (retained from original)
   // -----------------------------------------------------------------------
-
-  // Inciting incident: first scene with high dramatic tension proxies
-  // (exclamation marks, ALL CAPS words in dialogue, short choppy action).
-  const incitingScene = findIncitingIncident(parsed);
-  const midpointIdx = Math.floor(totalScenes / 2);
-  const midpointScene = parsed.scenes[midpointIdx];
-
-  // Climax: highest density scene in final third (most elements per line).
-  const finalThirdStart = Math.floor(totalScenes * 0.67);
-  const climaxScene = findClimax(parsed, finalThirdStart);
-
-  // Resolution: last scene(s).
-  const resolutionScene = parsed.scenes[totalScenes - 1];
-
-  lines.push('### Key Structural Beats');
-  lines.push('');
-
-  // Opening
-  lines.push(`**Opening** (Scene 1): "${parsed.scenes[0].heading}"`);
-  lines.push(`  Characters: ${parsed.scenes[0].characters.join(', ') || 'none'}`);
-  lines.push('');
-
-  // Inciting incident
-  if (incitingScene) {
-    const sceneNum = parsed.scenes.indexOf(incitingScene) + 1;
-    const pct = Math.round((sceneNum / totalScenes) * 100);
-    lines.push(`**Inciting Incident** (Scene ${sceneNum}, ~${pct}% through): "${incitingScene.heading}"`);
-    if (pct > 20) {
-      lines.push(`  Note: Inciting incident may be late — typically occurs in the first 10-15% of the script.`);
-    }
-    lines.push('');
-  }
-
-  // Midpoint
-  lines.push(`**Midpoint** (Scene ${midpointIdx + 1}): "${midpointScene.heading}"`);
-  lines.push(`  Characters: ${midpointScene.characters.join(', ') || 'none'}`);
-
-  // Check for location shift at midpoint (common midpoint reversal signal).
-  if (midpointIdx > 0) {
-    const prevLocation = parsed.scenes[midpointIdx - 1].location;
-    if (prevLocation !== midpointScene.location) {
-      lines.push(`  Location shift from "${prevLocation}" — potential midpoint reversal.`);
-    }
-  }
-  lines.push('');
-
-  // Climax
-  if (climaxScene) {
-    const climaxIdx = parsed.scenes.indexOf(climaxScene) + 1;
-    lines.push(`**Climax** (Scene ${climaxIdx}): "${climaxScene.heading}"`);
-    lines.push(`  Elements: ${climaxScene.elements.length}, Characters: ${climaxScene.characters.join(', ') || 'none'}`);
-    lines.push('');
-  }
-
-  // Resolution
-  lines.push(`**Resolution** (Scene ${totalScenes}): "${resolutionScene.heading}"`);
-  lines.push(`  Characters: ${resolutionScene.characters.join(', ') || 'none'}`);
-  lines.push('');
-
-  // -----------------------------------------------------------------------
-  // Structural diagnostics
-  // -----------------------------------------------------------------------
-  lines.push('### Structural Diagnostics');
+  lines.push('### Additional Diagnostics');
   lines.push('');
 
   // Act balance
@@ -424,7 +386,7 @@ function executeAnalyzeNarrativeArc(
     }
   }
 
-  // Character throughline: does the main character appear consistently?
+  // Character throughline
   const mainCharScenes = new Map<string, number>();
   for (const scene of parsed.scenes) {
     for (const charName of scene.characters) {
@@ -445,11 +407,11 @@ function executeAnalyzeNarrativeArc(
     }
   }
 
-  // Location variety across the screenplay
+  // Location variety
   const allLocations = new Set(parsed.scenes.map((s) => s.location));
   lines.push(`- **Location variety**: ${allLocations.size} unique locations across ${totalScenes} scenes.`);
 
-  // Pacing: scene length distribution
+  // Pacing rhythm
   const sceneLengths = parsed.scenes.map((s) => s.endLine - s.startLine + 1);
   const avgLength = sceneLengths.reduce((a, b) => a + b, 0) / sceneLengths.length;
   const variance = sceneLengths.reduce((sum, len) => sum + Math.pow(len - avgLength, 2), 0) / sceneLengths.length;
@@ -466,69 +428,16 @@ function executeAnalyzeNarrativeArc(
 }
 
 // ---------------------------------------------------------------------------
-// Narrative arc helpers
+// TRIPOD Structure Comparison Tool
 // ---------------------------------------------------------------------------
 
-/**
- * Find the likely inciting incident: the first scene (after scene 1) with
- * high dramatic tension proxies.
- */
-function findIncitingIncident(
+function executeCompareStructure(
   parsed: ReturnType<typeof parseFountain>,
-): ReturnType<typeof parseFountain>['scenes'][number] | null {
-  // Skip the very first scene (that's setup).
-  for (let i = 1; i < Math.min(parsed.scenes.length, Math.ceil(parsed.scenes.length * 0.3)); i++) {
-    const scene = parsed.scenes[i];
-    let tensionScore = 0;
-
-    for (const el of scene.elements) {
-      const text = el.text;
-      // Exclamation marks suggest urgency.
-      tensionScore += (text.match(/!/g) || []).length;
-      // ALL CAPS words in dialogue suggest shouting/intensity.
-      if (el.type === 'dialogue') {
-        const capsWords = text.match(/\b[A-Z]{2,}\b/g) || [];
-        tensionScore += capsWords.length * 2;
-      }
-      // Short action lines suggest rapid pacing.
-      if (el.type === 'action' && text.split('\n').length === 1 && text.length < 40) {
-        tensionScore += 1;
-      }
-    }
-
-    // A scene with meaningful tension signals is the likely inciting incident.
-    if (tensionScore >= 3) {
-      return scene;
-    }
+): ToolResult {
+  if (parsed.scenes.length === 0) {
+    return { result: 'No scenes found in the screenplay.' };
   }
 
-  // Fallback: second scene if it exists.
-  return parsed.scenes.length > 1 ? parsed.scenes[1] : null;
-}
-
-/**
- * Find the climax scene: highest element density scene in the final third.
- */
-function findClimax(
-  parsed: ReturnType<typeof parseFountain>,
-  startIdx: number,
-): ReturnType<typeof parseFountain>['scenes'][number] | null {
-  let bestScene = null;
-  let bestDensity = 0;
-
-  for (let i = startIdx; i < parsed.scenes.length; i++) {
-    const scene = parsed.scenes[i];
-    const lineSpan = scene.endLine - scene.startLine + 1;
-    const density = lineSpan > 0 ? scene.elements.length / lineSpan : 0;
-
-    // Also weight by element count raw (longer dense scenes are more climactic).
-    const score = density * scene.elements.length;
-
-    if (score > bestDensity) {
-      bestDensity = score;
-      bestScene = scene;
-    }
-  }
-
-  return bestScene;
+  const comparison = analyzeScreenplayStructure(parsed);
+  return { result: formatTripodComparison(comparison) };
 }

@@ -21,6 +21,7 @@ import { parseFountain } from '@/lib/fountain/parser';
 import { detectStructure } from '@/lib/fountain/structure';
 import { useCommentStore } from '@/lib/store/comments';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
+import { TURNING_POINT_NORMS, BEAT_TO_TP_MAP } from '@/lib/tripod/reference-data';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +68,7 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
 
   sections.push(buildIdentitySection());
   sections.push(buildFountainOverview());
+  sections.push(buildStructuralKnowledgeSection());
   sections.push(buildVoicePrompt(params.voice));
   sections.push(buildVoiceSamplesPrompt(params.voice.id));
   sections.push(buildModeInstructions(params.mode));
@@ -113,6 +115,37 @@ function buildFountainOverview(): string {
     '- **Parentheticals** are wrapped in parentheses within a dialogue block.',
     '- **Transitions** end with "TO:" and are all caps (e.g. `CUT TO:`).',
     '- Blank lines separate elements and are structurally meaningful.',
+  ].join('\n');
+}
+
+function buildStructuralKnowledgeSection(): string {
+  const tpLines: string[] = [];
+
+  const TP_KEYS = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'] as const;
+  for (const key of TP_KEYS) {
+    const norm = TURNING_POINT_NORMS[key];
+    const num = TP_KEYS.indexOf(key) + 1;
+    const range = `p.${norm.pageGuide.typicalRange[0]}-${norm.pageGuide.typicalRange[1]}`;
+    tpLines.push(
+      `${num}. **${norm.name}** (~p.${norm.pageGuide.median}, range ${range}): ` +
+      `${norm.description} Aligns with "${norm.savetheCatBeat}."`,
+    );
+  }
+
+  return [
+    '## Screenplay Structure Reference (TRIPOD)',
+    '',
+    'You have access to empirical data on where key turning points fall in',
+    'professional screenplays, derived from analysis of 84 films across genres.',
+    '',
+    '### Five Turning Points (typical positions in a 120-page screenplay):',
+    '',
+    ...tpLines,
+    '',
+    'When analyzing structure, compare the screenplay against these empirical',
+    'ranges. Turning points outside the typical range are not necessarily wrong',
+    'but warrant examination. Use the `analyze_narrative_arc` or `compare_structure`',
+    'tools for detailed TRIPOD-backed analysis.',
   ].join('\n');
 }
 
@@ -358,6 +391,12 @@ function buildStoryBibleSection(): string {
           const check = beat.completed ? '[x]' : '[ ]';
           let entry = `- ${check} **${beat.beat}**`;
           if (beat.description) entry += `: ${beat.description.slice(0, 100)}`;
+          // Add TRIPOD positional context for mapped beats
+          const tpKey = BEAT_TO_TP_MAP[beat.beat];
+          if (tpKey) {
+            const norm = TURNING_POINT_NORMS[tpKey];
+            entry += ` (TRIPOD: ~p.${norm.pageGuide.median}, range ${norm.pageGuide.typicalRange[0]}-${norm.pageGuide.typicalRange[1]})`;
+          }
           lines.push(entry);
         }
       }

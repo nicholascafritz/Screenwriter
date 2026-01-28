@@ -118,6 +118,12 @@ const MODE_EXAMPLES: Record<string, FewShotExample[]> = {
       responsePattern:
         'Diagnosed the structural issue with data: "Your Act 2 is 45 pages — that\'s nearly half the script. The midpoint scene (INT. HOSPITAL) doesn\'t shift the dramatic question. Right now your protagonist is reacting from page 30 to page 75. The midpoint needs to flip the script — give her a choice that changes the game."',
     },
+    {
+      userRequest: 'How does my story structure compare to professional films?',
+      toolSequence: ['compare_structure', 'analyze_narrative_arc', 'get_outline'],
+      responsePattern:
+        'Ran TRIPOD-enhanced structural comparison → showed turning point positions vs. professional norms: "Your Catalyst lands at page 18 — right in the typical range (p.9-20). But your Midpoint is late at page 72 (norm: p.54-70), which may explain why Act 2 feels like it drags. In Die Hard, the midpoint hits at 43% — yours is at 60%. Consider moving the hospital revelation earlier to tighten the second act."',
+    },
   ],
 };
 
@@ -192,7 +198,7 @@ const TOOL_PATTERNS: ToolPattern[] = [
   {
     name: 'Structural Analysis',
     trigger: 'Writer asks about pacing, structure, or dramatic arc.',
-    steps: ['get_statistics → get_outline → read_scene (act breaks) → map dramatic arc and identify weak points'],
+    steps: ['analyze_narrative_arc / compare_structure → get_outline → read_scene (act breaks) → diagnose with TRIPOD norms and reference films'],
   },
 ];
 
