@@ -9,7 +9,7 @@
 // and an optional per-hunk accept callback.
 // ---------------------------------------------------------------------------
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useEffect, useMemo } from 'react';
 import { DiffEditor, type BeforeMount } from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
 import { registerFountainLanguage } from './FountainLanguage';
@@ -81,6 +81,30 @@ export default function DiffViewer({
   className,
 }: DiffViewerProps) {
   const diffEditorRef = useRef<Monaco.editor.IStandaloneDiffEditor | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Generate a stable key based on content length to minimize unnecessary remounts
+  // Only remount when content structure changes substantially
+  const editorKey = useMemo(() => {
+    return `diff-${original.length}-${modified.length}`;
+  }, [original.length, modified.length]);
+
+  // Cleanup on unmount to prevent TextModel disposal errors
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear the editor ref to prevent accessing disposed models
+      if (diffEditorRef.current) {
+        try {
+          diffEditorRef.current.dispose();
+        } catch {
+          // Ignore disposal errors
+        }
+        diffEditorRef.current = null;
+      }
+    };
+  }, []);
 
   // ---- Character list for auto-complete -----------------------------------
 
@@ -101,7 +125,9 @@ export default function DiffViewer({
 
   const handleMount = useCallback(
     (editor: Monaco.editor.IStandaloneDiffEditor) => {
-      diffEditorRef.current = editor;
+      if (isMountedRef.current) {
+        diffEditorRef.current = editor;
+      }
     },
     [],
   );
@@ -202,6 +228,7 @@ export default function DiffViewer({
       {/* ---- Diff Editor ---- */}
       <div className="flex-1">
         <DiffEditor
+          key={editorKey}
           height="100%"
           language="fountain"
           theme={FOUNTAIN_THEME_NAME}
