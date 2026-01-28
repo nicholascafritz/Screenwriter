@@ -1,6 +1,17 @@
 // ---------------------------------------------------------------------------
 // Editor Store -- Zustand state management for the screenplay editor
 // ---------------------------------------------------------------------------
+//
+// PRIMITIVES ARCHITECTURE:
+// The store exposes atomic primitives that can be composed by an orchestration
+// layer. Direct cross-store calls are minimized — reconciliation and comment
+// reanchoring should be triggered by the orchestration layer, not by this store.
+//
+// Key primitives:
+// - _setContentRaw(content) — Pure state update, no side effects
+// - parseContentOnly() — Parse without reconciling outline
+// - setContent(content) — Composed: _setContentRaw + parseContentOnly + timeline
+// ---------------------------------------------------------------------------
 
 import { create } from 'zustand';
 import type { Screenplay } from '@/lib/fountain/types';
@@ -8,7 +19,6 @@ import type { DiffHunk, DiffResult } from '@/lib/diff/types';
 import { parseFountain } from '@/lib/fountain/parser';
 import { calculateDiff } from '@/lib/diff/engine';
 import { useTimelineStore } from './timeline';
-import { useOutlineStore } from './outline';
 
 // ---------------------------------------------------------------------------
 // Sample Fountain screenplay
@@ -150,9 +160,33 @@ export interface EditorState {
   /** The last "committed" content snapshot used as the baseline for the next timeline diff. */
   _lastCommittedContent: string;
 
-  // -- Actions --------------------------------------------------------------
+  // -- Pending Changes (Ask mode) -------------------------------------------
 
-  /** Replace the editor content and mark the document as dirty. */
+  /** Proposed screenplay content awaiting user approval (Ask mode). */
+  pendingProposal: string | null;
+
+  /** Description of the pending proposal. */
+  pendingProposalDescription: string | null;
+
+  // -- Primitive Actions (atomic, no side effects) --------------------------
+
+  /**
+   * Set content without parsing or triggering timeline.
+   * Use this for undo/redo replay or when you need to set content
+   * and control the subsequent operations yourself.
+   */
+  _setContentRaw: (content: string) => void;
+
+  /**
+   * Parse the current content without reconciling the outline.
+   * Returns the parsed Screenplay. The orchestration layer should
+   * call outline.reconcileFromParse() separately if needed.
+   */
+  parseContentOnly: () => Screenplay | null;
+
+  // -- Composed Actions (call primitives internally) ------------------------
+
+  /** Replace the editor content, parse it, and schedule timeline entry. */
   setContent: (content: string) => void;
 
   /** Update the cursor position. */
@@ -188,6 +222,28 @@ export interface EditorState {
    * The diff is computed from beforeContent → current content.
    */
   recordAIEdit: (beforeContent: string, description: string, sceneName?: string) => void;
+
+  // -- Pending Proposal Actions (Ask mode) ----------------------------------
+
+  /**
+   * Set a pending proposal for user approval (Ask mode).
+   */
+  setPendingProposal: (content: string, description: string) => void;
+
+  /**
+   * Accept the pending proposal, applying it to the editor.
+   */
+  acceptPendingProposal: () => void;
+
+  /**
+   * Reject the pending proposal, discarding it.
+   */
+  rejectPendingProposal: () => void;
+
+  /**
+   * Clear the pending proposal without applying it.
+   */
+  clearPendingProposal: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -212,9 +268,14 @@ function scheduleHumanEditCommit() {
 /**
  * Compute which SceneIds are affected by a diff — i.e., which outline scenes
  * have fountain ranges that overlap with any of the diff's modified-side hunks.
+ *
+ * @param diff The diff result to analyze
+ * @param scenes Array of scene entries with fountainRange (pass from outline store)
  */
-function computeAffectedSceneIds(diff: DiffResult): string[] {
-  const scenes = useOutlineStore.getState().outline?.scenes ?? [];
+export function computeAffectedSceneIds(
+  diff: DiffResult,
+  scenes: Array<{ id: string; fountainRange: { startLine: number; endLine: number } | null }>,
+): string[] {
   if (scenes.length === 0 || diff.hunks.length === 0) return [];
 
   const ids = new Set<string>();
@@ -258,18 +319,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   _isAIEditing: false,
   _lastCommittedContent: '',
 
-  // -- Actions --------------------------------------------------------------
+  pendingProposal: null,
+  pendingProposalDescription: null,
+
+  // -- Primitive Actions ----------------------------------------------------
+
+  _setContentRaw: (content: string) => {
+    set({ content, isDirty: true });
+  },
+
+  parseContentOnly: () => {
+    const { content } = get();
+    try {
+      const screenplay = parseFountain(content);
+      set({ screenplay });
+      return screenplay;
+    } catch {
+      // If parsing fails, keep the previous parse result.
+      return get().screenplay;
+    }
+  },
+
+  // -- Composed Actions -----------------------------------------------------
 
   setContent: (content: string) => {
     const state = get();
-    set({
-      content,
-      isDirty: true,
-    });
-    // Re-parse whenever content changes.
-    get().parseContent();
-
-    // Schedule a debounced human-edit timeline entry (skip during replay / AI edits).
+    // 1. Raw state update
+    get()._setContentRaw(content);
+    // 2. Parse only (no reconciliation — that's the orchestrator's job)
+    get().parseContentOnly();
+    // 3. Schedule timeline entry (skip during replay / AI edits)
     if (!state._isUndoRedoReplay && !state._isAIEditing) {
       scheduleHumanEditCommit();
     }
@@ -288,21 +367,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   parseContent: () => {
-    const { content } = get();
-    try {
-      const screenplay = parseFountain(content);
-      set({ screenplay });
-      // Reconcile the Outline with the fresh parse result.
-      // This keeps persistent scene identities in sync with the Fountain text.
-      const outlineStore = useOutlineStore.getState();
-      if (outlineStore.isLoaded) {
-        outlineStore.reconcileFromParse(screenplay);
-      }
-    } catch {
-      // If parsing fails, keep the previous parse result.
-      // This prevents the UI from breaking on transient syntax errors
-      // while the user is typing.
-    }
+    // NOTE: This method is kept for backward compatibility but should be
+    // replaced by orchestration layer calls to parseContentOnly() followed
+    // by outline.reconcileFromParse(). Direct outline reconciliation from
+    // editor store violates the primitives architecture.
+    get().parseContentOnly();
   },
 
   applyPatch: (hunks: DiffHunk[]) => {
@@ -349,14 +418,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       filePath: null,
       _lastCommittedContent: content,
     });
-    // Parse the sample immediately.
-    const screenplay = parseFountain(content);
-    set({ screenplay });
-    // Reconcile outline with the parsed result.
-    const outlineStore = useOutlineStore.getState();
-    if (outlineStore.isLoaded) {
-      outlineStore.reconcileFromParse(screenplay);
-    }
+    // Parse the sample immediately using the primitive.
+    // NOTE: Outline reconciliation should be triggered by the orchestration
+    // layer after calling this method, not directly by editor store.
+    get().parseContentOnly();
   },
 
   // -- Undo/redo actions ----------------------------------------------------
@@ -376,11 +441,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const diff = calculateDiff(_lastCommittedContent, content);
     if (diff.hunks.length === 0) return;
 
+    // NOTE: affectedSceneIds is passed as empty array here. The orchestration
+    // layer should compute this using outline.getState().outline?.scenes if needed.
+    // This prevents editor store from coupling to outline store.
     useTimelineStore.getState().addEntry({
       source: 'human',
       description: `Manual edit: ${diff.summary}`,
       diff,
-      affectedSceneIds: computeAffectedSceneIds(diff),
+      affectedSceneIds: [],
       undoable: true,
     });
 
@@ -394,12 +462,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const diff = calculateDiff(beforeContent, content);
     if (diff.hunks.length === 0) return;
 
+    // NOTE: affectedSceneIds is passed as empty array here. The orchestration
+    // layer should compute this using outline.getState().outline?.scenes if needed.
+    // This prevents editor store from coupling to outline store.
     useTimelineStore.getState().addEntry({
       source: 'ai',
       description,
       diff,
       sceneName,
-      affectedSceneIds: computeAffectedSceneIds(diff),
+      affectedSceneIds: [],
       undoable: true,
     });
 
@@ -439,5 +510,55 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     get().parseContent();
     set({ _isUndoRedoReplay: false });
+  },
+
+  // -- Pending Proposal Actions (Ask mode) ----------------------------------
+
+  setPendingProposal: (content: string, description: string) => {
+    set({
+      pendingProposal: content,
+      pendingProposalDescription: description,
+    });
+  },
+
+  acceptPendingProposal: () => {
+    const { pendingProposal, pendingProposalDescription, content } = get();
+    if (!pendingProposal) return;
+
+    // Capture the before state for timeline.
+    const beforeContent = content;
+
+    // Mark as AI editing to suppress human-edit recording.
+    set({ _isAIEditing: true });
+
+    // Apply the proposed content.
+    get().setContent(pendingProposal);
+
+    // Record to timeline.
+    get().recordAIEdit(
+      beforeContent,
+      `AI: ${pendingProposalDescription || 'Accepted proposal'}`,
+    );
+
+    // Clear the pending state.
+    set({
+      _isAIEditing: false,
+      pendingProposal: null,
+      pendingProposalDescription: null,
+    });
+  },
+
+  rejectPendingProposal: () => {
+    set({
+      pendingProposal: null,
+      pendingProposalDescription: null,
+    });
+  },
+
+  clearPendingProposal: () => {
+    set({
+      pendingProposal: null,
+      pendingProposalDescription: null,
+    });
   },
 }));

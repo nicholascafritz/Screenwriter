@@ -77,6 +77,10 @@ export default function EditorPage() {
   const isAIActive = useOperationsStore((s) => s.isAIActive);
   const trustLevel = useChatStore((s) => s.trustLevel);
   const setTrustLevel = useChatStore((s) => s.setTrustLevel);
+  const pendingProposal = useEditorStore((s) => s.pendingProposal);
+  const pendingProposalDescription = useEditorStore((s) => s.pendingProposalDescription);
+  const acceptPendingProposal = useEditorStore((s) => s.acceptPendingProposal);
+  const rejectPendingProposal = useEditorStore((s) => s.rejectPendingProposal);
   const projectName = useProjectStore((s) => s.name);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
   const saveCurrentProject = useProjectStore((s) => s.saveCurrentProject);
@@ -211,9 +215,9 @@ export default function EditorPage() {
           switch (e.key) {
             case 'm':
             case 'M':
-              // Cmd+Shift+M: Cycle through trust levels
+              // Cmd+Shift+M: Cycle through trust levels (Brainstorm → Ask → Write)
               e.preventDefault();
-              setTrustLevel(((trustLevel + 1) % 4) as TrustLevel);
+              setTrustLevel(((trustLevel + 1) % 3) as TrustLevel);
               return;
             case '1':
               // Cmd+Shift+1: Brainstorm mode
@@ -221,19 +225,14 @@ export default function EditorPage() {
               setTrustLevel(0);
               return;
             case '2':
-              // Cmd+Shift+2: Review mode
+              // Cmd+Shift+2: Ask mode
               e.preventDefault();
               setTrustLevel(1);
               return;
             case '3':
-              // Cmd+Shift+3: Edit mode
+              // Cmd+Shift+3: Write mode
               e.preventDefault();
               setTrustLevel(2);
-              return;
-            case '4':
-              // Cmd+Shift+4: Auto mode
-              e.preventDefault();
-              setTrustLevel(3);
               return;
           }
         }
@@ -488,7 +487,16 @@ export default function EditorPage() {
           <div className="flex-1 flex overflow-hidden relative">
             <LiveEditHighlight />
             <OperationLog />
-            {showDiff ? (
+            {/* Show pending proposal diff when in Ask mode and there's a proposal */}
+            {pendingProposal ? (
+              <DiffViewer
+                original={content}
+                modified={pendingProposal}
+                onAccept={acceptPendingProposal}
+                onReject={rejectPendingProposal}
+                className="flex-1"
+              />
+            ) : showDiff ? (
               <DiffViewer
                 original={diffOriginal}
                 modified={diffModified}

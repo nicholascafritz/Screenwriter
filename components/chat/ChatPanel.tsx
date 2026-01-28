@@ -25,7 +25,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Send, Trash2, Loader2, ArrowRight } from 'lucide-react';
+import { Send, Trash2, Loader2, ArrowRight, GitCompare, Check, X } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatSessionList from './ChatSessionList';
 import { useOperationsStore } from '@/lib/store/operations';
@@ -63,6 +63,10 @@ export default function ChatPanel({ className }: ChatPanelProps) {
   const currentScene = useEditorStore((s) => s.currentScene);
   const selection = useEditorStore((s) => s.selection);
   const setContent = useEditorStore((s) => s.setContent);
+  const pendingProposal = useEditorStore((s) => s.pendingProposal);
+  const pendingProposalDescription = useEditorStore((s) => s.pendingProposalDescription);
+  const acceptPendingProposal = useEditorStore((s) => s.acceptPendingProposal);
+  const rejectPendingProposal = useEditorStore((s) => s.rejectPendingProposal);
 
   const voiceId = useProjectStore((s) => s.voiceId);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
@@ -159,7 +163,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
     const voice = getVoiceById(voiceId) ?? PRESET_VOICES[0];
 
     // Build the request payload (re-read messages after possible compaction).
-    const endpoint = activeMode === 'agent' ? '/api/agent' : '/api/chat';
+    // All modes use the /api/chat endpoint
+    const endpoint = '/api/chat';
     const payload = {
       message: text,
       mode: activeMode,
@@ -245,36 +250,43 @@ export default function ChatPanel({ className }: ChatPanelProps) {
                 const toolName = parsed.toolName || parsed.name || 'AI edit';
                 const sceneName = parsed.sceneName || undefined;
 
-                // Log the operation.
-                const opId = useOperationsStore.getState().startOperation(
-                  toolName, `Editing${sceneName ? `: ${sceneName}` : ''}`, sceneName,
-                );
+                // In Ask mode (diff), store as pending proposal for approval.
+                // In Write mode (inline), apply immediately.
+                if (activeMode === 'diff') {
+                  const proposedContent = parsed.updatedScreenplay || content;
+                  useEditorStore.getState().setPendingProposal(proposedContent, toolName);
+                } else {
+                  // Log the operation.
+                  const opId = useOperationsStore.getState().startOperation(
+                    toolName, `Editing${sceneName ? `: ${sceneName}` : ''}`, sceneName,
+                  );
 
-                // Flush any pending human edits and capture content before AI edit.
-                const editorState = useEditorStore.getState();
-                editorState.flushPendingDiff();
-                const beforeContent = editorState.content;
+                  // Flush any pending human edits and capture content before AI edit.
+                  const editorState = useEditorStore.getState();
+                  editorState.flushPendingDiff();
+                  const beforeContent = editorState.content;
 
-                // Mark as AI editing to suppress human-edit recording.
-                useEditorStore.setState({ _isAIEditing: true });
+                  // Mark as AI editing to suppress human-edit recording.
+                  useEditorStore.setState({ _isAIEditing: true });
 
-                if (parsed.patch?.hunks) {
-                  useEditorStore.getState().applyPatch(parsed.patch.hunks);
-                } else if (parsed.updatedScreenplay) {
-                  setContent(parsed.updatedScreenplay);
+                  if (parsed.patch?.hunks) {
+                    useEditorStore.getState().applyPatch(parsed.patch.hunks);
+                  } else if (parsed.updatedScreenplay) {
+                    setContent(parsed.updatedScreenplay);
+                  }
+
+                  // Record the AI edit to the timeline.
+                  useEditorStore.getState().recordAIEdit(
+                    beforeContent,
+                    `AI: ${toolName}`,
+                    sceneName,
+                  );
+
+                  useEditorStore.setState({ _isAIEditing: false });
+
+                  // Mark operation complete.
+                  useOperationsStore.getState().completeOperation(opId);
                 }
-
-                // Record the AI edit to the timeline.
-                useEditorStore.getState().recordAIEdit(
-                  beforeContent,
-                  `AI: ${toolName}`,
-                  sceneName,
-                );
-
-                useEditorStore.setState({ _isAIEditing: false });
-
-                // Mark operation complete.
-                useOperationsStore.getState().completeOperation(opId);
               }
 
               // If it contains a text delta, append it.
@@ -318,36 +330,43 @@ export default function ChatPanel({ className }: ChatPanelProps) {
                 const toolName = parsed.name || parsed.toolName || 'AI edit';
                 const sceneName = parsed.sceneName || undefined;
 
-                // Log the operation.
-                const opId = useOperationsStore.getState().startOperation(
-                  toolName, `Editing${sceneName ? `: ${sceneName}` : ''}`, sceneName,
-                );
+                // In Ask mode (diff), store as pending proposal for approval.
+                // In Write mode (inline), apply immediately.
+                if (activeMode === 'diff') {
+                  const proposedContent = parsed.updatedScreenplay || content;
+                  useEditorStore.getState().setPendingProposal(proposedContent, toolName);
+                } else {
+                  // Log the operation.
+                  const opId = useOperationsStore.getState().startOperation(
+                    toolName, `Editing${sceneName ? `: ${sceneName}` : ''}`, sceneName,
+                  );
 
-                // Flush any pending human edits and capture content before AI edit.
-                const editorState = useEditorStore.getState();
-                editorState.flushPendingDiff();
-                const beforeContent = editorState.content;
+                  // Flush any pending human edits and capture content before AI edit.
+                  const editorState = useEditorStore.getState();
+                  editorState.flushPendingDiff();
+                  const beforeContent = editorState.content;
 
-                // Mark as AI editing to suppress human-edit recording.
-                useEditorStore.setState({ _isAIEditing: true });
+                  // Mark as AI editing to suppress human-edit recording.
+                  useEditorStore.setState({ _isAIEditing: true });
 
-                if (parsed.patch?.hunks) {
-                  useEditorStore.getState().applyPatch(parsed.patch.hunks);
-                } else if (parsed.updatedScreenplay) {
-                  setContent(parsed.updatedScreenplay);
+                  if (parsed.patch?.hunks) {
+                    useEditorStore.getState().applyPatch(parsed.patch.hunks);
+                  } else if (parsed.updatedScreenplay) {
+                    setContent(parsed.updatedScreenplay);
+                  }
+
+                  // Record the AI edit to the timeline.
+                  useEditorStore.getState().recordAIEdit(
+                    beforeContent,
+                    `AI: ${toolName}`,
+                    sceneName,
+                  );
+
+                  useEditorStore.setState({ _isAIEditing: false });
+
+                  // Mark operation complete.
+                  useOperationsStore.getState().completeOperation(opId);
                 }
-
-                // Record the AI edit to the timeline.
-                useEditorStore.getState().recordAIEdit(
-                  beforeContent,
-                  `AI: ${toolName}`,
-                  sceneName,
-                );
-
-                useEditorStore.setState({ _isAIEditing: false });
-
-                // Mark operation complete.
-                useOperationsStore.getState().completeOperation(opId);
               }
 
               // Accumulate text content.
@@ -428,13 +447,13 @@ export default function ChatPanel({ className }: ChatPanelProps) {
     clearMessages();
   }, [isStreaming, clearMessages]);
 
-  // -- Hand off writers room to agent mode ------------------------------------
+  // -- Upgrade from Brainstorm to Write mode ----------------------------------
 
-  const handleHandoff = useCallback(() => {
-    setMode('agent');
+  const handleUpgrade = useCallback(() => {
+    setMode('inline'); // Switch to Write mode
     sendMessage(
-      'Execute the ideas and plan from the Writers Room session above. Analyze the screenplay first, then work through the changes step by step.',
-      'agent',
+      'Please implement the ideas we discussed above. Analyze the screenplay first, then make the changes.',
+      'inline',
     );
   }, [setMode, sendMessage]);
 
@@ -499,16 +518,50 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
       {/* Input area */}
       <div className="shrink-0 p-3 space-y-2">
-        {/* Hand off to agent button (writers room only) */}
-        {mode === 'writers-room' && messages.length > 0 && !isStreaming && (
+        {/* Pending proposal indicator (Ask mode) */}
+        {pendingProposal && (
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-blue-400">
+              <GitCompare className="h-3.5 w-3.5" />
+              <span className="font-medium">
+                Changes proposed{pendingProposalDescription ? `: ${pendingProposalDescription}` : ''}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Review the diff in the editor panel, then accept or reject.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={rejectPendingProposal}
+                className="flex-1 gap-1 h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+              >
+                <X className="h-3 w-3" />
+                Reject
+              </Button>
+              <Button
+                size="sm"
+                onClick={acceptPendingProposal}
+                className="flex-1 gap-1 h-7 text-xs bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <Check className="h-3 w-3" />
+                Accept
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade to Write mode button (Brainstorm only) */}
+        {mode === 'writers-room' && messages.length > 0 && !isStreaming && !pendingProposal && (
           <Button
             variant="outline"
             size="sm"
-            onClick={handleHandoff}
+            onClick={handleUpgrade}
             className="w-full gap-2 text-xs"
           >
             <ArrowRight className="h-3.5 w-3.5" />
-            Hand Off to Agent
+            Apply Ideas (Switch to Write)
           </Button>
         )}
 

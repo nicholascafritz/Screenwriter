@@ -33,9 +33,13 @@ export type AIMode = 'inline' | 'diff' | 'agent' | 'writers-room';
 
 /**
  * Trust levels represent user's current AI autonomy preference.
- * Maps to internal modes but presents a single mental model to users.
+ * Simplified 3-level system inspired by Claude Code: Brainstorm → Ask → Write
+ *
+ * Level 0: Brainstorm - Read-only discussion, no edits
+ * Level 1: Ask - AI proposes changes, user approves via diff view
+ * Level 2: Write - AI makes changes immediately (with undo available)
  */
-export type TrustLevel = 0 | 1 | 2 | 3;
+export type TrustLevel = 0 | 1 | 2;
 
 export interface TrustLevelConfig {
   label: string;
@@ -50,34 +54,26 @@ export const TRUST_LEVEL_CONFIG: Record<TrustLevel, TrustLevelConfig> = {
   0: {
     label: 'Brainstorm',
     mode: 'writers-room',
-    description: 'Ideas and feedback only — no changes to your script',
-    shortDescription: 'Read-only',
-    icon: 'Lightbulb',
-    color: 'text-green-400',
+    description: 'Discuss ideas — AI won\'t make any changes',
+    shortDescription: 'Ideas only',
+    icon: 'MessageCircle',
+    color: 'text-emerald-400',
   },
   1: {
-    label: 'Review',
+    label: 'Ask',
     mode: 'diff',
-    description: 'Proposed changes shown for your approval before applying',
-    shortDescription: 'Show diff',
-    icon: 'GitCompare',
+    description: 'AI proposes changes for your approval',
+    shortDescription: 'Review first',
+    icon: 'HelpCircle',
     color: 'text-blue-400',
   },
   2: {
-    label: 'Edit',
+    label: 'Write',
     mode: 'inline',
-    description: 'Changes applied immediately with undo available',
+    description: 'AI makes changes directly (undo available)',
     shortDescription: 'Direct edit',
     icon: 'Pencil',
     color: 'text-amber-400',
-  },
-  3: {
-    label: 'Auto',
-    mode: 'agent',
-    description: 'Plans and executes multi-step tasks autonomously',
-    shortDescription: 'Autonomous',
-    icon: 'Bot',
-    color: 'text-purple-400',
   },
 };
 
@@ -284,8 +280,8 @@ function debouncedPersist() {
 export const useChatStore = create<ChatState>((set, get) => ({
   // -- Initial state --------------------------------------------------------
   messages: [],
-  trustLevel: 2, // Default to Edit (inline)
-  mode: 'inline',
+  trustLevel: 1, // Default to Ask mode (show diff for approval)
+  mode: 'diff',
   isStreaming: false,
   isCompacting: false,
   activeChatId: null,

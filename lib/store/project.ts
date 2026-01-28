@@ -445,6 +445,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   getProjectTrustLevel: (projectId: string) => {
-    return get().projectTrustLevels[projectId] ?? 2; // Default to Edit (level 2)
+    const stored = get().projectTrustLevels[projectId];
+    // Default to Ask (level 1) if not set, clamp old level 3 to level 2
+    if (stored === undefined) return 1;
+    return Math.min(stored, 2) as TrustLevel;
   },
 }));
