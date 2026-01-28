@@ -228,13 +228,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     useEditorStore.setState({ _lastCommittedContent: projectContent });
 
     // Initialize outline store for new project and reconcile with parsed screenplay.
-    const outlineStore = useOutlineStore.getState();
-    outlineStore.clear();
+    useOutlineStore.getState().clear();
     // Set projectId so reconciliation can work
     useOutlineStore.setState({ projectId: id, isLoaded: true });
     const screenplay = useEditorStore.getState().screenplay;
     if (screenplay) {
-      outlineStore.reconcileFromParse(screenplay);
+      useOutlineStore.getState().reconcileFromParse(screenplay);
     }
 
     // Persist to Firestore.
