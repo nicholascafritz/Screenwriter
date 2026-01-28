@@ -1,17 +1,24 @@
 'use client';
 
 // ---------------------------------------------------------------------------
-// OutlinePanel -- Scene navigator / beat sheet sidebar
+// OutlinePanel -- Scene navigator / structural spine sidebar
 // ---------------------------------------------------------------------------
 //
-// Lists every scene in the parsed screenplay as a BeatCard.  Clicking a
-// card scrolls the Monaco editor to that scene's starting line.  The
-// currently active scene (based on cursor position) is highlighted.
+// Lists every scene from the persistent Outline store as a BeatCard.
+// Clicking a card scrolls the Monaco editor to that scene's starting line.
+// The currently active scene (based on cursor position) is highlighted.
+//
+// Data source priority:
+// - Scene identity & metadata: useOutlineStore (persistent SceneIds)
+// - Character names & element counts: useEditorStore (ephemeral parse data)
 // ---------------------------------------------------------------------------
 
 import React, { useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useEditorStore } from '@/lib/store/editor';
+import { useOutlineStore } from '@/lib/store/outline';
+import type { OutlineEntry } from '@/lib/store/outline-types';
+import type { Scene } from '@/lib/fountain/types';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -26,6 +33,16 @@ interface OutlinePanelProps {
   className?: string;
 }
 
+/**
+ * Enrichment data from the ephemeral parse for display purposes.
+ * The Outline store doesn't track element counts or character names yet;
+ * those come from the parsed Scene.
+ */
+export interface SceneEnrichment {
+  characters: string[];
+  elementCount: number;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -33,37 +50,60 @@ interface OutlinePanelProps {
 export default function OutlinePanel({ className }: OutlinePanelProps) {
   // -- Store bindings -------------------------------------------------------
 
+  const outline = useOutlineStore((s) => s.outline);
   const screenplay = useEditorStore((s) => s.screenplay);
   const cursorLine = useEditorStore((s) => s.cursorLine);
 
   // -- Derived data ---------------------------------------------------------
 
-  const scenes = screenplay?.scenes ?? [];
+  const entries = outline?.scenes ?? [];
   const pageCount = screenplay?.pageCount ?? 0;
-  const sceneCount = scenes.length;
+  const draftedCount = entries.filter((e) => e.fountainRange !== null).length;
+  const plannedCount = entries.filter((e) => e.fountainRange === null).length;
+
+  /**
+   * Build a lookup from startLine → parsed Scene for enrichment data.
+   * This lets us pull characters and element counts from the ephemeral parse
+   * while keeping identity rooted in the Outline store.
+   */
+  const enrichmentMap = useMemo(() => {
+    const map = new Map<number, SceneEnrichment>();
+    if (!screenplay) return map;
+    for (const scene of screenplay.scenes) {
+      map.set(scene.startLine, {
+        characters: scene.characters,
+        elementCount: scene.elements.length,
+      });
+    }
+    return map;
+  }, [screenplay]);
 
   /**
    * Determine which scene is "active" based on the current cursor line.
-   * The active scene is the one whose line range contains the cursor.
+   * Uses the Outline store's fountainRange for matching.
    */
   const activeSceneId = useMemo(() => {
-    if (scenes.length === 0) return null;
+    if (entries.length === 0) return null;
 
-    // Walk backwards to find the scene whose startLine <= cursorLine.
-    for (let i = scenes.length - 1; i >= 0; i--) {
-      if (cursorLine >= scenes[i].startLine) {
-        return scenes[i].id;
+    // Walk backwards through drafted scenes to find the one containing the cursor.
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const range = entries[i].fountainRange;
+      if (range && cursorLine >= range.startLine) {
+        return entries[i].id;
       }
     }
-    return scenes[0]?.id ?? null;
-  }, [scenes, cursorLine]);
+    // Fallback: first drafted scene.
+    const first = entries.find((e) => e.fountainRange !== null);
+    return first?.id ?? null;
+  }, [entries, cursorLine]);
 
   // -- Handlers -------------------------------------------------------------
 
-  const handleSceneClick = useCallback((startLine: number) => {
+  const handleSceneClick = useCallback((entry: OutlineEntry) => {
+    if (!entry.fountainRange) return; // Can't navigate to planned scenes.
     const handle = getEditorHandle();
     if (handle) {
-      handle.revealLine(startLine);
+      handle.revealLine(entry.fountainRange.startLine);
     }
   }, []);
 
@@ -94,9 +134,16 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
           <div className="flex items-center gap-1">
             <MapPin className="h-3 w-3" />
             <span>
-              {sceneCount} scene{sceneCount !== 1 ? 's' : ''}
+              {draftedCount} scene{draftedCount !== 1 ? 's' : ''}
             </span>
           </div>
+          {plannedCount > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="text-amber-400">
+                {plannedCount} planned
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -104,7 +151,7 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
 
       {/* Scene list */}
       <ScrollArea className="flex-1 p-2">
-        {scenes.length === 0 ? (
+        {entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground p-6">
             <FileText className="h-8 w-8 mb-2 opacity-40" />
             <p className="font-medium">No scenes found</p>
@@ -115,13 +162,18 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
           </div>
         ) : (
           <div className="space-y-1.5">
-            {scenes.map((scene, idx) => (
+            {entries.map((entry, idx) => (
               <BeatCard
-                key={scene.id}
-                scene={scene}
+                key={entry.id}
+                entry={entry}
+                enrichment={
+                  entry.fountainRange
+                    ? enrichmentMap.get(entry.fountainRange.startLine)
+                    : undefined
+                }
                 sceneIndex={idx}
-                isActive={scene.id === activeSceneId}
-                onClick={() => handleSceneClick(scene.startLine)}
+                isActive={entry.id === activeSceneId}
+                onClick={() => handleSceneClick(entry)}
               />
             ))}
           </div>
