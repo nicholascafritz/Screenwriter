@@ -57,6 +57,7 @@ export default function SortableBeatCard({ id, children }: SortableBeatCardProps
       <div
         {...attributes}
         {...listeners}
+        onClick={(e) => e.stopPropagation()}
         className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center
                    opacity-0 group-hover/sortable:opacity-100 cursor-grab active:cursor-grabbing
                    transition-opacity z-10"

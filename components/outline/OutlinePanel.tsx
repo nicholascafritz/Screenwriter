@@ -70,11 +70,6 @@ export interface SceneEnrichment {
   elementCount: number;
 }
 
-/** A group of scenes under an optional act header. */
-interface ActGroup {
-  act: OutlineAct | null;
-  scenes: OutlineEntry[];
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -152,46 +147,6 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
     return first?.id ?? null;
   }, [entries, cursorLine]);
 
-  /**
-   * Group scenes by act for rendering with collapsible headers.
-   * Falls back to a flat list when no act structure is detected.
-   */
-  const actGroups = useMemo((): ActGroup[] => {
-    const acts = outline?.acts ?? [];
-    if (acts.length === 0) {
-      return [{ act: null, scenes: entries }];
-    }
-
-    const sceneIdToAct = new Map<string, OutlineAct>();
-    for (const act of acts) {
-      for (const sceneId of act.sceneIds) {
-        sceneIdToAct.set(sceneId, act);
-      }
-    }
-
-    const groups: ActGroup[] = [];
-    let currentAct: OutlineAct | null = null;
-    let currentGroup: OutlineEntry[] = [];
-
-    for (const entry of entries) {
-      const entryAct = sceneIdToAct.get(entry.id) ?? null;
-
-      if ((entryAct?.id ?? null) !== (currentAct?.id ?? null)) {
-        if (currentGroup.length > 0) {
-          groups.push({ act: currentAct, scenes: currentGroup });
-        }
-        currentAct = entryAct;
-        currentGroup = [entry];
-      } else {
-        currentGroup.push(entry);
-      }
-    }
-    if (currentGroup.length > 0) {
-      groups.push({ act: currentAct, scenes: currentGroup });
-    }
-
-    return groups;
-  }, [entries, outline?.acts]);
 
   // -- Handlers -------------------------------------------------------------
 
@@ -387,42 +342,49 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-1">
-                {actGroups.map((group, gi) => (
-                  <div key={group.act?.id ?? `ungrouped-${gi}`}>
-                    {/* Act header */}
-                    {group.act && (
-                      <button
-                        type="button"
-                        onClick={() => toggleAct(group.act!.id)}
-                        className="flex items-center gap-1.5 w-full px-1 py-1.5 text-[10px]
-                                   font-semibold text-muted-foreground uppercase tracking-wider
-                                   hover:text-foreground transition-colors rounded"
-                      >
-                        <ChevronRight
-                          className={cn(
-                            'h-3 w-3 transition-transform shrink-0',
-                            !collapsedActs.has(group.act!.id) && 'rotate-90',
-                          )}
-                        />
-                        <span className="truncate">{group.act.label}</span>
-                        <span className="ml-auto font-normal text-[9px] shrink-0">
-                          {group.scenes.length} scene{group.scenes.length !== 1 ? 's' : ''}
-                        </span>
-                      </button>
-                    )}
+              <div className="space-y-1.5">
+                {/* Render all scenes as siblings for proper dnd-kit sorting */}
+                {entries.map((entry, idx) => {
+                  // Check if this scene starts a new act group
+                  const actForEntry = outline?.acts?.find((act) =>
+                    act.sceneIds.includes(entry.id)
+                  );
+                  const prevEntry = entries[idx - 1];
+                  const prevActForEntry = prevEntry
+                    ? outline?.acts?.find((act) => act.sceneIds.includes(prevEntry.id))
+                    : null;
+                  const isNewAct = actForEntry?.id !== prevActForEntry?.id && actForEntry;
+                  const isCollapsed = actForEntry && collapsedActs.has(actForEntry.id);
 
-                    {/* Scene cards (hidden when act is collapsed) */}
-                    {(!group.act || !collapsedActs.has(group.act.id)) && (
-                      <div className="space-y-1.5">
-                        {group.scenes.map((entry) => {
-                          const globalIdx = entries.indexOf(entry);
-                          return renderBeatCard(entry, globalIdx);
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  return (
+                    <React.Fragment key={entry.id}>
+                      {/* Act header when starting new act */}
+                      {isNewAct && (
+                        <button
+                          type="button"
+                          onClick={() => toggleAct(actForEntry!.id)}
+                          className="flex items-center gap-1.5 w-full px-1 py-1.5 text-[10px]
+                                     font-semibold text-muted-foreground uppercase tracking-wider
+                                     hover:text-foreground transition-colors rounded"
+                        >
+                          <ChevronRight
+                            className={cn(
+                              'h-3 w-3 transition-transform shrink-0',
+                              !collapsedActs.has(actForEntry!.id) && 'rotate-90',
+                            )}
+                          />
+                          <span className="truncate">{actForEntry!.label}</span>
+                          <span className="ml-auto font-normal text-[9px] shrink-0">
+                            {outline?.acts?.find((a) => a.id === actForEntry!.id)?.sceneIds.length ?? 0} scene
+                            {(outline?.acts?.find((a) => a.id === actForEntry!.id)?.sceneIds.length ?? 0) !== 1 ? 's' : ''}
+                          </span>
+                        </button>
+                      )}
+                      {/* Scene card (hidden when act is collapsed) */}
+                      {!isCollapsed && renderBeatCard(entry, idx)}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             )}
           </ScrollArea>

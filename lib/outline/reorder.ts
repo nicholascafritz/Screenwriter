@@ -11,6 +11,8 @@
 
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import type { OutlineEntry } from '@/lib/store/outline-types';
+import { useEditorStore } from '@/lib/store/editor';
+import { useOutlineStore } from '@/lib/store/outline';
 
 /**
  * Move a drafted scene's Fountain text to a new position relative to another
@@ -97,5 +99,16 @@ export function reorderDraftedSceneInEditor(
 
   const newContent = lines.join('\n');
   handle.setContent(newContent);
+
+  // Monaco's onChange will call setContent which only parses - we need to also
+  // trigger outline reconciliation to update scene positions.
+  // Give Monaco a tick to process the change, then reconcile.
+  setTimeout(() => {
+    const screenplay = useEditorStore.getState().screenplay;
+    if (screenplay) {
+      useOutlineStore.getState().reconcileFromParse(screenplay);
+    }
+  }, 0);
+
   return true;
 }

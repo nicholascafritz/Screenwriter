@@ -213,7 +213,12 @@ export default function ScreenplayEditor({
           }
         },
         revealLine: (line: number) => {
+          // Set cursor position to the beginning of the line
+          editor.setPosition({ lineNumber: line, column: 1 });
+          // Scroll to center the line in view
           editor.revealLineInCenter(line);
+          // Focus the editor to ensure the cursor is visible
+          editor.focus();
         },
       };
     },
