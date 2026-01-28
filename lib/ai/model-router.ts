@@ -88,12 +88,12 @@ export type TaskType =
  * | generate-title    | Haiku 3.5         | No       | Short title generation, fast + cheap    |
  */
 const ROUTING_TABLE: Record<TaskType, ModelConfig> = {
-  'agent-plan':       OPUS_THINKING,
+  'agent-plan':       OPUS_STANDARD,      // Temporarily disabled thinking due to API errors
   'writers-room':     OPUS_STANDARD,
   'story-guide':      OPUS_STANDARD,
-  'screenplay-write': SONNET_THINKING,
-  'diff-review':      SONNET_THINKING,
-  'agent-execute':    SONNET_THINKING,
+  'screenplay-write': SONNET_STANDARD,    // Temporarily disabled thinking due to API errors
+  'diff-review':      SONNET_STANDARD,    // Temporarily disabled thinking due to API errors
+  'agent-execute':    SONNET_STANDARD,    // Temporarily disabled thinking due to API errors
   'inline-edit':      SONNET_STANDARD,
   'summarize':        HAIKU_STANDARD,
   'generate-title':   HAIKU_STANDARD,
