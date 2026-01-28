@@ -22,6 +22,8 @@ import { detectStructure } from '@/lib/fountain/structure';
 import { useCommentStore } from '@/lib/store/comments';
 import { useStoryBibleStore, SAVE_THE_CAT_BEATS } from '@/lib/store/story-bible';
 import { TURNING_POINT_NORMS, BEAT_TO_TP_MAP } from '@/lib/tripod/reference-data';
+import { generateScreenplaySummary, formatSummaryForPrompt } from '@/lib/context/screenplay-summary';
+import { formatCompactionResultForContext, type CompactionResult } from '@/lib/context/chat-compaction';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +44,12 @@ export interface SystemPromptParams {
 
   /** Text the user has selected in the editor, if any. */
   selection?: string;
+
+  /** Project ID for story bible and summary generation. */
+  projectId?: string;
+
+  /** Compaction result from previous chat history, if any. */
+  compactionResult?: CompactionResult | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +82,15 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
   sections.push(buildModeInstructions(params.mode));
   sections.push(buildModeExamples(params.mode));
   sections.push(buildToolPatterns(params.mode));
+
+  // Tiered context: Macro summary (Tier 1 - always present)
+  sections.push(buildMacroSummarySection(params));
+
+  // Include compaction context if chat was previously compacted
+  if (params.compactionResult) {
+    sections.push(buildCompactionContextSection(params.compactionResult));
+  }
+
   sections.push(buildContextSection(params));
   sections.push(buildStoryBibleSection());
   sections.push(buildFormattingRules());
@@ -249,6 +266,37 @@ function buildModeInstructions(mode: 'inline' | 'diff' | 'agent' | 'writers-room
         '- Overwhelm with too many ideas at once — focus on the most impactful notes.',
       ].join('\n');
   }
+}
+
+/**
+ * Build the macro summary section (Tier 1 - always present).
+ * This provides a compact overview of the screenplay that persists across
+ * context reductions.
+ */
+function buildMacroSummarySection(params: SystemPromptParams): string {
+  if (!params.screenplay || params.screenplay.trim().length === 0) {
+    return '';
+  }
+
+  if (!params.projectId) {
+    return '';
+  }
+
+  try {
+    const summary = generateScreenplaySummary(params.screenplay, params.projectId);
+    return formatSummaryForPrompt(summary);
+  } catch {
+    // If summary generation fails, skip it (context section provides fallback).
+    return '';
+  }
+}
+
+/**
+ * Build the compaction context section.
+ * This includes decisions and directions from previous chat that was compacted.
+ */
+function buildCompactionContextSection(compactionResult: CompactionResult): string {
+  return formatCompactionResultForContext(compactionResult);
 }
 
 function buildContextSection(params: SystemPromptParams): string {

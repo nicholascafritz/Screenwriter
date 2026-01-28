@@ -29,8 +29,10 @@ import { Send, Trash2, Loader2, ArrowRight } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatSessionList from './ChatSessionList';
 import { useOperationsStore } from '@/lib/store/operations';
-import ModeSelector from './ModeSelector';
+import TrustDial from './TrustDial';
+import ContextBudgetIndicator from './ContextBudget';
 import VoiceSelector from '@/components/voice/VoiceSelector';
+import { buildContextComponents, type ContextBudget } from '@/lib/context/budget-manager';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,10 +65,12 @@ export default function ChatPanel({ className }: ChatPanelProps) {
   const setContent = useEditorStore((s) => s.setContent);
 
   const voiceId = useProjectStore((s) => s.voiceId);
+  const activeProjectId = useProjectStore((s) => s.activeProjectId);
 
   // -- Local state ----------------------------------------------------------
 
   const [inputValue, setInputValue] = useState('');
+  const [contextBudget, setContextBudget] = useState<ContextBudget | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -80,6 +84,34 @@ export default function ChatPanel({ className }: ChatPanelProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // -- Update context budget on changes -------------------------------------
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      setContextBudget(null);
+      return;
+    }
+
+    // Debounce budget calculation to avoid excessive recalculations.
+    const timeout = setTimeout(() => {
+      const chatHistory = messages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
+
+      const { budget } = buildContextComponents({
+        screenplayText: content,
+        projectId: activeProjectId,
+        chatMessages: chatHistory,
+        cursorScene: currentScene ?? undefined,
+      });
+
+      setContextBudget(budget);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [content, messages, activeProjectId, currentScene]);
 
   // -- Send message ---------------------------------------------------------
 
@@ -415,22 +447,27 @@ export default function ChatPanel({ className }: ChatPanelProps) {
         className,
       )}
     >
-      {/* Header: Voice selector and mode */}
+      {/* Header: Voice selector, trust dial, and context budget */}
       <div className="shrink-0 space-y-2 p-3 border-b border-border">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleClear}
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-            aria-label="Clear chat"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {contextBudget && (
+              <ContextBudgetIndicator budget={contextBudget} />
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClear}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              aria-label="Clear chat"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
         <VoiceSelector className="w-full" />
-        <ModeSelector className="w-full" />
+        <TrustDial className="w-full" />
       </div>
 
       {/* Chat session list */}

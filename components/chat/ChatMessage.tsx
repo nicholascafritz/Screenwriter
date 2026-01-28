@@ -10,6 +10,8 @@ import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { useChatStore, type ChatMessage as ChatMessageType } from '@/lib/store/chat';
 import { ChevronDown, ChevronRight, Wrench, User, Bot, Info, GitBranch, Minimize2 } from 'lucide-react';
+import DialogueAnalysisResultView from './DialogueAnalysisResult';
+import type { DialogueAnalysisResult } from '@/lib/agent/dialogue-types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,6 +100,20 @@ function FormattedContent({ content, isUser }: { content: string; isUser?: boole
 // ToolCallDisplay -- Collapsible display for tool calls
 // ---------------------------------------------------------------------------
 
+/**
+ * Check if a tool call is a dialogue analysis with structured data.
+ */
+function isDialogueAnalysis(tc: NonNullable<ChatMessageType['toolCalls']>[number]): boolean {
+  return (
+    tc.name === 'dialogue' &&
+    tc.input &&
+    typeof tc.input === 'object' &&
+    'action' in tc.input &&
+    tc.input.action === 'analyze' &&
+    tc.structuredData !== undefined
+  );
+}
+
 function ToolCallDisplay({
   toolCalls,
 }: {
@@ -105,6 +121,63 @@ function ToolCallDisplay({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Check if any tool call is a dialogue analysis with structured data
+  const dialogueAnalysis = toolCalls.find(isDialogueAnalysis);
+
+  // If there's a dialogue analysis, render it prominently
+  if (dialogueAnalysis && dialogueAnalysis.structuredData) {
+    return (
+      <div className="mt-2">
+        <DialogueAnalysisResultView
+          result={dialogueAnalysis.structuredData as DialogueAnalysisResult}
+        />
+        {/* Still show other tool calls if any */}
+        {toolCalls.length > 1 && (
+          <div className="mt-2 rounded-md border border-border/50 bg-black/10">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+              <Wrench className="h-3 w-3" />
+              <span>
+                {toolCalls.length - 1} other tool call{toolCalls.length - 1 !== 1 ? 's' : ''}
+              </span>
+            </button>
+
+            {isExpanded && (
+              <div className="border-t border-border/50 px-2.5 py-2 space-y-2">
+                {toolCalls.filter((tc) => !isDialogueAnalysis(tc)).map((tc, idx) => (
+                  <div key={idx} className="text-xs">
+                    <div className="font-mono font-medium text-foreground/80">
+                      {tc.name}
+                    </div>
+                    <pre className="mt-1 overflow-x-auto rounded bg-black/20 p-1.5 text-[10px] leading-relaxed text-muted-foreground">
+                      {JSON.stringify(tc.input, null, 2)}
+                    </pre>
+                    {tc.result && (
+                      <div className="mt-1 text-muted-foreground/80 italic">
+                        {tc.result.length > 200
+                          ? tc.result.slice(0, 200) + '...'
+                          : tc.result}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Default rendering for other tool calls
   return (
     <div className="mt-2 rounded-md border border-border/50 bg-black/10">
       <button

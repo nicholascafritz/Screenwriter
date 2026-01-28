@@ -17,7 +17,7 @@ import { deleteCommentsForProject } from '@/lib/firebase/firestore-comment-persi
 import { deleteStoryBible } from '@/lib/firebase/firestore-story-bible-persistence';
 import { deleteOutline } from '@/lib/firebase/firestore-outline-persistence';
 import { useEditorStore } from './editor';
-import { useChatStore } from './chat';
+import { useChatStore, type TrustLevel } from './chat';
 import { useTimelineStore } from './timeline';
 import { useCommentStore } from './comments';
 import { useStoryBibleStore } from './story-bible';
@@ -42,6 +42,9 @@ export interface ProjectState {
 
   /** The authenticated user's ID (set by auth context). */
   userId: string | null;
+
+  /** Trust level preference per project. Default is 2 (Edit). */
+  projectTrustLevels: Record<string, TrustLevel>;
 
   // -- Actions --------------------------------------------------------------
 
@@ -91,6 +94,12 @@ export interface ProjectState {
 
   /** Reset all stores (editor, chat, timeline) to their initial states. */
   resetStores: () => void;
+
+  /** Update the trust level for a specific project. */
+  updateProjectTrustLevel: (projectId: string, level: TrustLevel) => void;
+
+  /** Get the trust level for a specific project. */
+  getProjectTrustLevel: (projectId: string) => TrustLevel;
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +107,7 @@ export interface ProjectState {
 // ---------------------------------------------------------------------------
 
 const ACTIVE_PROJECT_KEY = 'screenwriter:activeProjectId';
+const TRUST_LEVELS_KEY = 'screenwriter:projectTrustLevels';
 
 /** Persist the active project ID to localStorage for session restoration. */
 function persistActiveProjectId(id: string | null) {
@@ -118,6 +128,25 @@ export function getPersistedActiveProjectId(): string | null {
     return localStorage.getItem(ACTIVE_PROJECT_KEY);
   } catch {
     return null;
+  }
+}
+
+/** Persist trust levels to localStorage. */
+function persistTrustLevels(levels: Record<string, TrustLevel>) {
+  try {
+    localStorage.setItem(TRUST_LEVELS_KEY, JSON.stringify(levels));
+  } catch {
+    // localStorage may be unavailable (SSR, private browsing).
+  }
+}
+
+/** Read trust levels from localStorage. */
+function loadTrustLevels(): Record<string, TrustLevel> {
+  try {
+    const stored = localStorage.getItem(TRUST_LEVELS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
   }
 }
 
@@ -143,6 +172,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   activeProjectId: null,
   projects: [],
   userId: null,
+  projectTrustLevels: loadTrustLevels(),
 
   // -- Actions --------------------------------------------------------------
 
@@ -257,6 +287,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Load chat sessions.
     const chatStore = useChatStore.getState();
     await chatStore.loadSessionsForProject(id);
+
+    // Sync trust level to chat store
+    const trustLevel = get().getProjectTrustLevel(id);
+    chatStore.setTrustLevel(trustLevel);
 
     return true;
   },
@@ -390,5 +424,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Reset outline store.
     const outlineStore = useOutlineStore.getState();
     outlineStore.clear();
+  },
+
+  updateProjectTrustLevel: (projectId: string, level: TrustLevel) => {
+    set((state) => {
+      const updated = {
+        ...state.projectTrustLevels,
+        [projectId]: level,
+      };
+      persistTrustLevels(updated);
+      return { projectTrustLevels: updated };
+    });
+  },
+
+  getProjectTrustLevel: (projectId: string) => {
+    return get().projectTrustLevels[projectId] ?? 2; // Default to Edit (level 2)
   },
 }));

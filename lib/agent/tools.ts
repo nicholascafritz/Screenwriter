@@ -20,6 +20,16 @@ import { STRUCTURE_TOOLS, executeStructureToolCall } from './structure-tools';
 import { GUIDE_TOOLS, executeGuideToolCall, isGuideToolName } from './guide-tools';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useOutlineStore } from '@/lib/store/outline';
+import { useDialogueDismissalsStore } from '@/lib/store/dialogue-dismissals';
+import {
+  PATTERN_CONFIG,
+  type DialoguePatternType,
+  type DialogueAnalysisResult,
+  type CharacterComparison,
+  type InvestigationPrompt,
+  type DistinctiveFeature,
+  type AnalysisSummary,
+} from './dialogue-types';
 
 // ---------------------------------------------------------------------------
 // Tool result type
@@ -31,6 +41,9 @@ export interface ToolResult {
 
   /** When the tool mutates the screenplay, the updated Fountain text. */
   updatedScreenplay?: string;
+
+  /** Structured data for rich UI rendering (e.g., dialogue analysis). */
+  structuredData?: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -1449,9 +1462,19 @@ function executeDialogue(
     }
   }
 
+  // Try to get projectId from the project store for dismissal filtering
+  let projectId: string | undefined;
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { useProjectStore } = require('@/lib/store/project');
+    projectId = useProjectStore.getState().activeProjectId ?? undefined;
+  } catch {
+    // Project store may not be available in all contexts
+  }
+
   switch (action) {
     case 'analyze':
-      return executeDialogueAnalyze(parsed, targetScenes, character);
+      return executeDialogueAnalyze(parsed, targetScenes, character, projectId);
     case 'generate':
       if (!character) {
         return { result: 'Error: "character" parameter is required for the generate action.' };
@@ -1471,6 +1494,7 @@ function executeDialogueAnalyze(
   parsed: Screenplay,
   targetScenes: Scene[],
   characterFilter?: string,
+  projectId?: string,
 ): ToolResult {
   const dialogueMap = extractCharacterDialogue(parsed, targetScenes, characterFilter);
 
@@ -1483,113 +1507,202 @@ function executeDialogueAnalyze(
     profiles.push(buildCharacterProfile(name, lines));
   }
 
-  const report: string[] = ['## Dialogue Analysis', ''];
+  // Build the structured analysis result
+  const comparisons: CharacterComparison[] = [];
+  let distinctPairs = 0;
+  let overlapPairs = 0;
+  let similarPairs = 0;
+  const topStrengths: string[] = [];
 
-  // Per-character analysis
-  for (const profile of profiles) {
-    report.push(`### ${profile.name}`);
-    report.push('');
-    report.push(`- **Dialogue blocks**: ${profile.lines.length}`);
-    report.push(`- **Total words**: ${profile.wordCount}`);
-    report.push(`- **Avg words/block**: ${profile.avgWordsPerBlock}`);
-    report.push(`- **Avg sentence length**: ${profile.avgSentenceLength} words`);
-    report.push(`- **Sentence length variance**: ${profile.sentenceLengthVariance} (${profile.sentenceLengthVariance > 15 ? 'varied rhythm' : 'uniform rhythm'})`);
-    report.push(`- **Question ratio**: ${Math.round(profile.questionRatio * 100)}% of sentences are questions`);
+  // Get the dismissals store for filtering
+  const dismissalsStore = useDialogueDismissalsStore.getState();
 
-    if (profile.topVocab.length > 0) {
-      const vocabStr = profile.topVocab
-        .map(([word, count]) => `"${word}" (${count}x)`)
-        .join(', ');
-      report.push(`- **Top vocabulary**: ${vocabStr}`);
-    }
-
-    // Quality flags
-    const flags: string[] = [];
-
-    // On-the-nose detection: dialogue containing emotion words
-    const emotionWords = ['angry', 'sad', 'happy', 'scared', 'love', 'hate', 'afraid', 'sorry', 'feel', 'feeling'];
-    const emotionHits: string[] = [];
-    for (const line of profile.lines) {
-      const lower = line.toLowerCase();
-      for (const ew of emotionWords) {
-        if (lower.includes(ew)) {
-          emotionHits.push(`"${line.slice(0, 50)}${line.length > 50 ? '...' : ''}" (contains "${ew}")`);
-          break;
-        }
-      }
-    }
-    if (emotionHits.length > 0) {
-      flags.push(`**On-the-nose alert**: ${emotionHits.length} line(s) state emotions directly — ${emotionHits.slice(0, 2).join('; ')}`);
-    }
-
-    // Monologue detection: blocks > 5 lines (estimated by word count > 60)
-    const longBlocks = profile.lines.filter(l => l.split('\n').length > 5 || l.split(/\s+/).length > 60);
-    if (longBlocks.length > 0) {
-      flags.push(`**Monologue alert**: ${longBlocks.length} long dialogue block(s) — consider breaking up with action beats or interruptions`);
-    }
-
-    // Exposition detection
-    const expositionPatterns = ['as you know', 'as we discussed', 'remember when', 'let me explain', 'the reason is', 'what you need to understand'];
-    const expositionHits: string[] = [];
-    for (const line of profile.lines) {
-      const lower = line.toLowerCase();
-      for (const pattern of expositionPatterns) {
-        if (lower.includes(pattern)) {
-          expositionHits.push(`"${pattern}" detected`);
-          break;
-        }
-      }
-    }
-    if (expositionHits.length > 0) {
-      flags.push(`**Exposition dump**: ${expositionHits.length} line(s) with expository patterns — ${expositionHits.slice(0, 2).join('; ')}`);
-    }
-
-    if (flags.length > 0) {
-      report.push('');
-      report.push('**Quality flags:**');
-      for (const flag of flags) {
-        report.push(`  - ${flag}`);
-      }
-    }
-
-    report.push('');
-  }
-
-  // Cross-character voice distinctiveness (when multiple characters)
+  // Cross-character voice analysis (when multiple characters)
   if (profiles.length >= 2) {
-    report.push('### Voice Distinctiveness');
-    report.push('');
-
     for (let i = 0; i < profiles.length; i++) {
       for (let j = i + 1; j < profiles.length; j++) {
         const a = profiles[i];
         const b = profiles[j];
 
-        // Word overlap
+        // Calculate metrics
         const aWords = new Set(a.topVocab.map(([w]) => w));
         const bWords = new Set(b.topVocab.map(([w]) => w));
-        const overlap = Array.from(aWords).filter(w => bWords.has(w));
-        const overlapPct = Math.round((overlap.length / Math.max(aWords.size, bWords.size, 1)) * 100);
-
-        // Sentence length similarity
+        const sharedWords = Array.from(aWords).filter(w => bWords.has(w));
+        const overlapPct = Math.round((sharedWords.length / Math.max(aWords.size, bWords.size, 1)) * 100);
         const lengthDiff = Math.abs(a.avgSentenceLength - b.avgSentenceLength);
+        const varianceDiff = Math.abs(a.sentenceLengthVariance - b.sentenceLengthVariance);
 
-        const distinct = overlapPct < 30 && lengthDiff > 2;
-        const similar = overlapPct > 50 || lengthDiff < 1;
+        // Determine assessment
+        let assessment: 'distinct' | 'some_overlap' | 'similar';
+        let assessmentDescription: string;
 
-        report.push(`- **${a.name} vs ${b.name}**: Vocab overlap ${overlapPct}%, sentence length diff ${lengthDiff.toFixed(1)} words`);
-        if (similar) {
-          report.push(`  ⚠ These characters sound similar — differentiate vocabulary, rhythm, or sentence structure`);
-        } else if (distinct) {
-          report.push(`  ✓ Distinct voices detected`);
+        if (overlapPct < 30 && lengthDiff > 2) {
+          assessment = 'distinct';
+          assessmentDescription = 'These characters have clearly distinct voices.';
+          distinctPairs++;
+        } else if (overlapPct > 50 || lengthDiff < 1) {
+          assessment = 'similar';
+          assessmentDescription = 'These characters share notable vocal patterns.';
+          similarPairs++;
+        } else {
+          assessment = 'some_overlap';
+          assessmentDescription = 'These characters have some shared patterns worth examining.';
+          overlapPairs++;
+        }
+
+        // Build distinctive features (what's working)
+        const distinctiveFeaturesA = buildDistinctiveFeatures(a, b);
+        const distinctiveFeaturesB = buildDistinctiveFeatures(b, a);
+
+        // Build investigation prompts (what to explore)
+        const investigationPrompts: InvestigationPrompt[] = [];
+
+        // Check vocabulary overlap
+        if (overlapPct > 30 && sharedWords.length > 0) {
+          const patternType: DialoguePatternType = 'vocabulary_overlap';
+          // Skip if dismissed
+          if (!projectId || !dismissalsStore.isDismissed(projectId, a.name, b.name, patternType)) {
+            const config = PATTERN_CONFIG[patternType];
+            investigationPrompts.push({
+              patternType,
+              question: config.questionTemplate,
+              focus: config.investigationFocus,
+              examples: [
+                { character: a.name, line: findExampleWithWord(a.lines, sharedWords[0]) || a.lines[0]?.slice(0, 60) || '' },
+                { character: b.name, line: findExampleWithWord(b.lines, sharedWords[0]) || b.lines[0]?.slice(0, 60) || '' },
+              ],
+              metric: overlapPct,
+              metricLabel: 'vocabulary overlap',
+            });
+          }
+        }
+
+        // Check rhythm similarity
+        if (lengthDiff < 1.5 && varianceDiff < 5) {
+          const patternType: DialoguePatternType = 'rhythm_similarity';
+          if (!projectId || !dismissalsStore.isDismissed(projectId, a.name, b.name, patternType)) {
+            const config = PATTERN_CONFIG[patternType];
+            investigationPrompts.push({
+              patternType,
+              question: config.questionTemplate,
+              focus: config.investigationFocus,
+              metric: Math.round(lengthDiff * 10) / 10,
+              metricLabel: 'sentence length difference (words)',
+            });
+          }
+        }
+
+        // Check question ratio similarity
+        const questionDiff = Math.abs(a.questionRatio - b.questionRatio);
+        if (questionDiff < 0.1 && a.questionRatio > 0.2 && b.questionRatio > 0.2) {
+          const patternType: DialoguePatternType = 'sentence_structure';
+          if (!projectId || !dismissalsStore.isDismissed(projectId, a.name, b.name, patternType)) {
+            const config = PATTERN_CONFIG[patternType];
+            investigationPrompts.push({
+              patternType,
+              question: 'Both characters ask questions at similar rates — is this intentional?',
+              focus: config.investigationFocus,
+              metric: Math.round((a.questionRatio + b.questionRatio) / 2 * 100),
+              metricLabel: 'average question ratio (%)',
+            });
+          }
+        }
+
+        comparisons.push({
+          characterA: a.name,
+          characterB: b.name,
+          distinctiveFeaturesA,
+          distinctiveFeaturesB,
+          investigationPrompts,
+          assessment,
+          assessmentDescription,
+        });
+
+        // Track top strengths
+        if (distinctiveFeaturesA.length > 0 && topStrengths.length < 3) {
+          topStrengths.push(`${a.name}: ${distinctiveFeaturesA[0].observation}`);
+        }
+        if (distinctiveFeaturesB.length > 0 && topStrengths.length < 3) {
+          topStrengths.push(`${b.name}: ${distinctiveFeaturesB[0].observation}`);
         }
       }
     }
-
-    report.push('');
   }
 
-  // Dialogue-to-action ratio per scene
+  // Build the summary
+  const summary: AnalysisSummary = {
+    charactersAnalyzed: profiles.length,
+    distinctPairs,
+    overlapPairs,
+    similarPairs,
+    topStrengths: topStrengths.slice(0, 3),
+  };
+
+  const analysisResult: DialogueAnalysisResult = {
+    summary,
+    comparisons,
+    timestamp: Date.now(),
+    projectId,
+  };
+
+  // Build the text report (for AI consumption)
+  const report: string[] = ['## Dialogue Analysis', ''];
+
+  // Summary
+  report.push(`Analyzed ${summary.charactersAnalyzed} characters across ${targetScenes.length} scene(s).`);
+  if (comparisons.length > 0) {
+    report.push(`- ${distinctPairs} pair(s) with distinct voices`);
+    if (overlapPairs > 0) report.push(`- ${overlapPairs} pair(s) with some overlap to investigate`);
+    if (similarPairs > 0) report.push(`- ${similarPairs} pair(s) with similar patterns`);
+  }
+  report.push('');
+
+  // Per-character stats (condensed)
+  report.push('### Character Stats');
+  report.push('');
+  for (const profile of profiles) {
+    report.push(`**${profile.name}**: ${profile.lines.length} blocks, ${profile.avgWordsPerBlock} avg words/block, ${Math.round(profile.questionRatio * 100)}% questions`);
+  }
+  report.push('');
+
+  // Cross-character analysis
+  if (comparisons.length > 0) {
+    report.push('### Voice Comparison');
+    report.push('');
+    for (const comp of comparisons) {
+      const icon = comp.assessment === 'distinct' ? '✓' : comp.assessment === 'similar' ? '?' : '~';
+      report.push(`**${comp.characterA} vs ${comp.characterB}** ${icon}`);
+      report.push(comp.assessmentDescription);
+
+      // What's working
+      if (comp.distinctiveFeaturesA.length > 0 || comp.distinctiveFeaturesB.length > 0) {
+        report.push('');
+        report.push('*What\'s working:*');
+        for (const f of comp.distinctiveFeaturesA) {
+          report.push(`- ${comp.characterA}: ${f.observation}`);
+        }
+        for (const f of comp.distinctiveFeaturesB) {
+          report.push(`- ${comp.characterB}: ${f.observation}`);
+        }
+      }
+
+      // Investigation prompts (non-dismissed)
+      if (comp.investigationPrompts.length > 0) {
+        report.push('');
+        report.push('*Worth investigating:*');
+        for (const prompt of comp.investigationPrompts) {
+          report.push(`- ${prompt.question}`);
+          if (prompt.metric !== undefined) {
+            report.push(`  (${prompt.metricLabel}: ${prompt.metric})`);
+          }
+        }
+      }
+
+      report.push('');
+    }
+  }
+
+  // Scene dialogue density
   report.push('### Scene Dialogue Density');
   report.push('');
   for (const scene of targetScenes) {
@@ -1605,7 +1718,83 @@ function executeDialogueAnalyze(
     }
   }
 
-  return { result: report.join('\n') };
+  return {
+    result: report.join('\n'),
+    structuredData: analysisResult,
+  };
+}
+
+/**
+ * Build distinctive features for a character compared to another.
+ */
+function buildDistinctiveFeatures(
+  profile: CharacterDialogueData,
+  other: CharacterDialogueData
+): DistinctiveFeature[] {
+  const features: DistinctiveFeature[] = [];
+
+  // Unique vocabulary
+  const ownWords = new Set(profile.topVocab.map(([w]) => w));
+  const otherWords = new Set(other.topVocab.map(([w]) => w));
+  const uniqueWords = Array.from(ownWords).filter(w => !otherWords.has(w));
+  if (uniqueWords.length > 2) {
+    features.push({
+      observation: `Distinct vocabulary: "${uniqueWords.slice(0, 3).join('", "')}"`,
+      example: findExampleWithWord(profile.lines, uniqueWords[0]),
+    });
+  }
+
+  // Rhythm difference
+  const varianceDiff = profile.sentenceLengthVariance - other.sentenceLengthVariance;
+  if (Math.abs(varianceDiff) > 10) {
+    if (profile.sentenceLengthVariance > other.sentenceLengthVariance) {
+      features.push({
+        observation: 'More varied sentence rhythm (mixes short and long)',
+      });
+    } else {
+      features.push({
+        observation: 'Consistent, measured cadence',
+      });
+    }
+  }
+
+  // Question tendency
+  const questionDiff = profile.questionRatio - other.questionRatio;
+  if (questionDiff > 0.15) {
+    features.push({
+      observation: 'Asks more questions — interrogative personality',
+    });
+  } else if (questionDiff < -0.15) {
+    features.push({
+      observation: 'More declarative — assertive communication style',
+    });
+  }
+
+  // Wordiness
+  const wordsDiff = profile.avgWordsPerBlock - other.avgWordsPerBlock;
+  if (wordsDiff > 5) {
+    features.push({
+      observation: 'Longer speeches — verbose communicator',
+    });
+  } else if (wordsDiff < -5) {
+    features.push({
+      observation: 'Shorter, punchier dialogue — economical speaker',
+    });
+  }
+
+  return features.slice(0, 3); // Limit to top 3 features
+}
+
+/**
+ * Find an example line containing a specific word.
+ */
+function findExampleWithWord(lines: string[], word: string): string | undefined {
+  for (const line of lines) {
+    if (line.toLowerCase().includes(word.toLowerCase())) {
+      return line.length > 60 ? line.slice(0, 60) + '...' : line;
+    }
+  }
+  return undefined;
 }
 
 function executeDialogueGenerate(

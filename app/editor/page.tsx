@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/lib/store/editor';
-import { useChatStore } from '@/lib/store/chat';
+import { useChatStore, TRUST_LEVEL_CONFIG, type TrustLevel } from '@/lib/store/chat';
 import { useProjectStore, getPersistedActiveProjectId } from '@/lib/store/project';
 import { debounce } from '@/lib/utils';
 import { processFiles } from '@/lib/upload/processor';
@@ -75,7 +75,8 @@ export default function EditorPage() {
   const canRedo = useTimelineStore((s) => s.canRedo);
   const activeCommentCount = useCommentStore((s) => s.comments.filter((c) => !c.resolved).length);
   const isAIActive = useOperationsStore((s) => s.isAIActive);
-  const mode = useChatStore((s) => s.mode);
+  const trustLevel = useChatStore((s) => s.trustLevel);
+  const setTrustLevel = useChatStore((s) => s.setTrustLevel);
   const projectName = useProjectStore((s) => s.name);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
   const saveCurrentProject = useProjectStore((s) => s.saveCurrentProject);
@@ -205,6 +206,38 @@ export default function EditorPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
+        // Cmd+Shift shortcuts
+        if (e.shiftKey) {
+          switch (e.key) {
+            case 'm':
+            case 'M':
+              // Cmd+Shift+M: Cycle through trust levels
+              e.preventDefault();
+              setTrustLevel(((trustLevel + 1) % 4) as TrustLevel);
+              return;
+            case '1':
+              // Cmd+Shift+1: Brainstorm mode
+              e.preventDefault();
+              setTrustLevel(0);
+              return;
+            case '2':
+              // Cmd+Shift+2: Review mode
+              e.preventDefault();
+              setTrustLevel(1);
+              return;
+            case '3':
+              // Cmd+Shift+3: Edit mode
+              e.preventDefault();
+              setTrustLevel(2);
+              return;
+            case '4':
+              // Cmd+Shift+4: Auto mode
+              e.preventDefault();
+              setTrustLevel(3);
+              return;
+          }
+        }
+
         switch (e.key) {
           case 'b':
             e.preventDefault();
@@ -235,7 +268,7 @@ export default function EditorPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [trustLevel, setTrustLevel]);
 
   const pageCount = screenplay?.pageCount ?? 0;
   const sceneCount = screenplay?.scenes?.length ?? 0;
@@ -526,7 +559,7 @@ export default function EditorPage() {
               </span>
             )}
             <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-              {mode === 'inline' ? 'Inline' : mode === 'diff' ? 'Diff' : mode === 'writers-room' ? 'Writers Room' : 'Agent'}
+              {TRUST_LEVEL_CONFIG[trustLevel].label}
             </Badge>
             <span>Fountain</span>
           </div>
