@@ -4,12 +4,14 @@ import React from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { cn } from '@/lib/utils';
 
+const EMPTY_BEATS: { id: string; beat: string; completed: boolean }[] = [];
+
 /**
  * Horizontal beat progress indicator showing which of the 15 Save the Cat
  * beats have been populated during the guided development session.
  */
 export default function GuideProgress() {
-  const beatSheet = useStoryBibleStore((s) => s.bible?.beatSheet ?? []);
+  const beatSheet = useStoryBibleStore((s) => s.bible?.beatSheet ?? EMPTY_BEATS);
   const completedCount = beatSheet.filter((b) => b.completed).length;
 
   return (
