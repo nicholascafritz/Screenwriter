@@ -17,6 +17,7 @@ import { validateScreenplay } from '@/lib/fountain/validator';
 import { analyzeScreenplay } from '@/lib/fountain/analytics';
 import type { Screenplay, Scene } from '@/lib/fountain/types';
 import { STRUCTURE_TOOLS, executeStructureToolCall } from './structure-tools';
+import { GUIDE_TOOLS, executeGuideToolCall, isGuideToolName } from './guide-tools';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 
 // ---------------------------------------------------------------------------
@@ -383,6 +384,11 @@ export function executeToolCall(
   input: Record<string, unknown>,
   screenplay: string,
 ): ToolResult {
+  // Guide tools are pass-through (store mutations happen client-side).
+  if (isGuideToolName(name)) {
+    return executeGuideToolCall(name, input);
+  }
+
   switch (name) {
     case 'read_screenplay':
       return executeReadScreenplay(screenplay, input);
@@ -1800,6 +1806,9 @@ const READ_ONLY_TOOLS = new Set([
 export function getToolsForMode(mode: string): ToolDefinition[] {
   if (mode === 'writers-room') {
     return SCREENPLAY_TOOLS.filter((t) => READ_ONLY_TOOLS.has(t.name));
+  }
+  if (mode === 'story-guide') {
+    return GUIDE_TOOLS;
   }
   return SCREENPLAY_TOOLS;
 }

@@ -36,6 +36,7 @@ export async function loadStoryBible(
       characters: data.characters ?? [],
       locations: data.locations ?? [],
       beatSheet: data.beatSheet ?? [],
+      outline: data.outline ?? [],
       customNotes: data.customNotes ?? '',
       updatedAt: data.updatedAt ?? Date.now(),
     };
@@ -59,6 +60,7 @@ export async function saveStoryBible(
       characters: bible.characters,
       locations: bible.locations,
       beatSheet: bible.beatSheet,
+      outline: bible.outline ?? [],
       customNotes: bible.customNotes,
       updatedAt: bible.updatedAt,
     });

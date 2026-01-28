@@ -26,6 +26,14 @@ export interface BeatSheetEntry {
   completed: boolean;
 }
 
+export interface SceneOutlineEntry {
+  sceneNumber: number;
+  heading: string;
+  summary: string;
+  beat?: string;
+  characters?: string[];
+}
+
 export interface StoryBible {
   projectId: string;
   genre: string;
@@ -36,6 +44,7 @@ export interface StoryBible {
   characters: CharacterProfile[];
   locations: LocationProfile[];
   beatSheet: BeatSheetEntry[];
+  outline: SceneOutlineEntry[];
   customNotes: string;
   updatedAt: number;
 }

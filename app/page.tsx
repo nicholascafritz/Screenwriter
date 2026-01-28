@@ -38,7 +38,7 @@ export default function HomePage() {
 
   const handleNewProject = async (name?: string, content?: string) => {
     await createProject(name, content);
-    router.push('/editor');
+    // Navigation is handled by the NewProjectModal's choice step.
   };
 
   const handleSampleProject = async () => {

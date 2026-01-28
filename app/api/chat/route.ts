@@ -8,6 +8,7 @@
 //   - inline mode:       Sonnet 4.5 standard (fast, contained edits)
 //   - diff mode:         Sonnet 4.5 + thinking (reasoned change proposals)
 //   - writers-room mode: Opus 4.5 standard (top-tier creative analysis)
+//   - story-guide mode:  Opus 4.5 standard (guided story development)
 //
 // Streaming format (newline-delimited JSON):
 //   {"type":"metadata","model":"...","thinking":false}
@@ -23,7 +24,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 // Allow longer execution for writers-room mode (many sequential tool calls).
 export const maxDuration = 120;
-import { buildSystemPrompt } from '@/lib/agent/prompts';
+import { buildSystemPrompt, buildGuideSystemPrompt } from '@/lib/agent/prompts';
 import { executeToolCall, getToolsForMode } from '@/lib/agent/tools';
 import { getVoiceById, PRESET_VOICES } from '@/lib/agent/voices';
 import { computePatch } from '@/lib/diff/patch-transport';
@@ -36,12 +37,19 @@ import { chatModeToTask, getModelForTask } from '@/lib/ai/model-router';
 
 interface ChatRequestBody {
   message: string;
-  mode: 'inline' | 'diff' | 'writers-room';
+  mode: 'inline' | 'diff' | 'writers-room' | 'story-guide';
   voiceId?: string;
   screenplay: string;
   cursorScene?: string;
   selection?: string;
   history?: Anthropic.MessageParam[];
+  /** Guide-mode context from the project creation form. */
+  guideContext?: {
+    projectTitle?: string;
+    genre?: string;
+    logline?: string;
+    notes?: string;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -79,7 +87,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (screenplay === undefined || screenplay === null) {
+    // screenplay is required for editor modes but optional for story-guide.
+    if ((screenplay === undefined || screenplay === null) && mode !== 'story-guide') {
       return new Response(
         JSON.stringify({ error: 'Missing "screenplay" field.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } },
@@ -89,14 +98,17 @@ export async function POST(request: NextRequest) {
     // Resolve the voice profile.
     const voice = (voiceId ? getVoiceById(voiceId) : undefined) ?? PRESET_VOICES[0];
 
-    // Build the system prompt.
-    const systemPrompt = buildSystemPrompt({
-      mode: mode ?? 'inline',
-      voice,
-      screenplay,
-      cursorScene,
-      selection,
-    });
+    // Build the system prompt (guide mode uses a separate prompt builder).
+    const resolvedModeForPrompt = mode ?? 'inline';
+    const systemPrompt = resolvedModeForPrompt === 'story-guide'
+      ? buildGuideSystemPrompt(body.guideContext ?? {})
+      : buildSystemPrompt({
+          mode: resolvedModeForPrompt as 'inline' | 'diff' | 'agent' | 'writers-room',
+          voice,
+          screenplay,
+          cursorScene,
+          selection,
+        });
 
     // Initialise the Anthropic client (reads ANTHROPIC_API_KEY from env).
     const client = new Anthropic();
@@ -129,7 +141,9 @@ export async function POST(request: NextRequest) {
             }),
           );
 
-          const iterationLimit = resolvedMode === 'writers-room' ? 25 : 10;
+          const iterationLimit =
+            resolvedMode === 'writers-room' ? 25 :
+            resolvedMode === 'story-guide' ? 50 : 10;
           currentScreenplay = await runConversationLoop(
             client,
             systemPrompt,

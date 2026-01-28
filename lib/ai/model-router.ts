@@ -59,6 +59,7 @@ export type TaskType =
   | 'agent-plan'
   | 'agent-execute'
   | 'writers-room'
+  | 'story-guide'
   | 'screenplay-write'
   | 'diff-review'
   | 'inline-edit'
@@ -78,6 +79,7 @@ export type TaskType =
  * |-------------------|-------------------|----------|----------------------------------------|
  * | agent-plan        | Opus 4.5          | Yes      | Deep strategic reasoning needed         |
  * | writers-room      | Opus 4.5          | No       | Conversational speed, top-tier quality  |
+ * | story-guide       | Opus 4.5          | No       | Conversational guide, top-tier quality  |
  * | screenplay-write  | Sonnet 4.5        | Yes      | Creative writing benefits from thought  |
  * | diff-review       | Sonnet 4.5        | Yes      | Needs reasoning about change rationale  |
  * | agent-execute     | Sonnet 4.5        | Yes      | Writing + tool use in execution steps   |
@@ -88,6 +90,7 @@ export type TaskType =
 const ROUTING_TABLE: Record<TaskType, ModelConfig> = {
   'agent-plan':       OPUS_THINKING,
   'writers-room':     OPUS_STANDARD,
+  'story-guide':      OPUS_STANDARD,
   'screenplay-write': SONNET_THINKING,
   'diff-review':      SONNET_THINKING,
   'agent-execute':    SONNET_THINKING,
@@ -121,7 +124,7 @@ export function getModelForTask(task: TaskType): ModelConfig {
  * @returns The task type to use for model selection.
  */
 export function chatModeToTask(
-  mode: 'inline' | 'diff' | 'writers-room',
+  mode: 'inline' | 'diff' | 'writers-room' | 'story-guide',
 ): TaskType {
   switch (mode) {
     case 'inline':
@@ -130,6 +133,8 @@ export function chatModeToTask(
       return 'diff-review';
     case 'writers-room':
       return 'writers-room';
+    case 'story-guide':
+      return 'story-guide';
   }
 }
 
@@ -151,6 +156,9 @@ export function explainRouting(task: TaskType): string {
     case 'writers-room':
       return `Using ${config.label} for creative brainstorming — ` +
         `top-tier analytical quality at conversational speed.`;
+    case 'story-guide':
+      return `Using ${config.label} for story development guide — ` +
+        `top-tier conversational quality for guided story building.`;
     case 'screenplay-write':
       return `Using ${config.label}${thinking} for screenplay writing — ` +
         `deliberate creative process produces better prose and dialogue.`;
