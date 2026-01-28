@@ -227,6 +227,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Set the baseline for undo/redo diffing.
     useEditorStore.setState({ _lastCommittedContent: projectContent });
 
+    // Initialize outline store for new project and reconcile with parsed screenplay.
+    const outlineStore = useOutlineStore.getState();
+    outlineStore.clear();
+    // Set projectId so reconciliation can work
+    useOutlineStore.setState({ projectId: id, isLoaded: true });
+    const screenplay = useEditorStore.getState().screenplay;
+    if (screenplay) {
+      outlineStore.reconcileFromParse(screenplay);
+    }
+
     // Persist to Firestore.
     const projectData: ProjectData = {
       id,
