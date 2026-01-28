@@ -1,13 +1,22 @@
 // ---------------------------------------------------------------------------
 // Comments Store -- Zustand state management for inline comments
 // ---------------------------------------------------------------------------
+//
+// PRIMITIVES ARCHITECTURE:
+// The store exposes atomic primitives that can be composed by an orchestration
+// layer. Direct cross-store calls are minimized. The key primitives are:
+//
+// - addCommentRaw(comment) — Add comment with explicit sceneId (no outline lookup)
+// - addComment(comment) — Composed: requires orchestration to pass sceneId
+// - reanchorCommentsRaw(oldContent, newContent, sceneIdLookup) — Reanchor with callback
+// - reanchorComments(oldContent, newContent) — Backward compat (no sceneId update)
+// ---------------------------------------------------------------------------
 
 import { create } from 'zustand';
 import { generateId } from '@/lib/utils';
 import type { Comment } from './comment-types';
 import { loadComments, saveComments, deleteCommentsForProject } from '@/lib/firebase/firestore-comment-persistence';
 import { useProjectStore } from './project';
-import { useOutlineStore } from './outline';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,9 +32,28 @@ export interface CommentState {
   /** The project these comments belong to. */
   projectId: string | null;
 
-  // -- Actions --------------------------------------------------------------
+  // -- Primitive Actions (atomic, no cross-store calls) ---------------------
 
-  /** Add a new comment. */
+  /**
+   * Add a comment with explicit sceneId. No outline store lookup.
+   * Use this when the orchestration layer has already determined the sceneId.
+   */
+  addCommentRaw: (comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
+
+  /**
+   * Reanchor comments with an optional sceneId lookup function.
+   * This is the primitive that doesn't call outline store directly.
+   * @param sceneIdLookup - Optional function to get sceneId for a line number
+   */
+  reanchorCommentsRaw: (
+    oldContent: string,
+    newContent: string,
+    sceneIdLookup?: (line: number) => string | null,
+  ) => void;
+
+  // -- Composed Actions (may use primitives internally) ---------------------
+
+  /** Add a new comment. SceneId should be provided by caller. */
   addComment: (comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
 
   /** Update an existing comment's content. */
@@ -59,6 +87,8 @@ export interface CommentState {
    * Re-anchor comments after the screenplay content changes.
    * Attempts to find the anchorText near the original line numbers
    * and update line positions accordingly.
+   * NOTE: This is a backward-compat wrapper. Orchestration layer should
+   * use reanchorCommentsRaw with a sceneIdLookup for full functionality.
    */
   reanchorComments: (oldContent: string, newContent: string) => void;
 
@@ -114,14 +144,12 @@ export const useCommentStore = create<CommentState>((set, get) => ({
   activeCommentId: null,
   projectId: null,
 
-  addComment: (comment) => {
+  // -- Primitive Actions ----------------------------------------------------
+
+  addCommentRaw: (comment) => {
     const now = Date.now();
-    // Auto-populate sceneId from the outline store if not provided.
-    const sceneId = comment.sceneId ??
-      useOutlineStore.getState().getSceneIdForLine(comment.startLine);
     const newComment: Comment = {
       ...comment,
-      sceneId,
       id: generateId(),
       createdAt: now,
       updatedAt: now,
@@ -130,6 +158,43 @@ export const useCommentStore = create<CommentState>((set, get) => ({
       comments: [...state.comments, newComment],
     }));
     schedulePersist();
+  },
+
+  reanchorCommentsRaw: (oldContent, newContent, sceneIdLookup) => {
+    const { comments } = get();
+    if (comments.length === 0) return;
+
+    const newLines = newContent.split('\n');
+    let changed = false;
+
+    const updated = comments.map((comment) => {
+      const newStart = findAnchorLine(newLines, comment.anchorText, comment.startLine);
+      if (newStart !== null && newStart !== comment.startLine) {
+        const delta = newStart - comment.startLine;
+        const newStartLine = newStart;
+        changed = true;
+        return {
+          ...comment,
+          startLine: newStartLine,
+          endLine: comment.endLine + delta,
+          sceneId: sceneIdLookup ? sceneIdLookup(newStartLine) : comment.sceneId,
+        };
+      }
+      return comment;
+    });
+
+    if (changed) {
+      set({ comments: updated });
+      schedulePersist();
+    }
+  },
+
+  // -- Composed Actions -----------------------------------------------------
+
+  addComment: (comment) => {
+    // NOTE: sceneId should be provided by the caller (orchestration layer).
+    // If not provided, it remains null/undefined.
+    get().addCommentRaw(comment);
   },
 
   updateComment: (id, content) => {
@@ -198,33 +263,10 @@ export const useCommentStore = create<CommentState>((set, get) => ({
   },
 
   reanchorComments: (oldContent, newContent) => {
-    const { comments } = get();
-    if (comments.length === 0) return;
-
-    const newLines = newContent.split('\n');
-    let changed = false;
-
-    const outlineStore = useOutlineStore.getState();
-    const updated = comments.map((comment) => {
-      const newStart = findAnchorLine(newLines, comment.anchorText, comment.startLine);
-      if (newStart !== null && newStart !== comment.startLine) {
-        const delta = newStart - comment.startLine;
-        const newStartLine = newStart;
-        changed = true;
-        return {
-          ...comment,
-          startLine: newStartLine,
-          endLine: comment.endLine + delta,
-          sceneId: outlineStore.getSceneIdForLine(newStartLine),
-        };
-      }
-      return comment;
-    });
-
-    if (changed) {
-      set({ comments: updated });
-      schedulePersist();
-    }
+    // NOTE: This backward-compat method doesn't update sceneIds.
+    // The orchestration layer should use reanchorCommentsRaw with a
+    // sceneIdLookup callback for full functionality.
+    get().reanchorCommentsRaw(oldContent, newContent);
   },
 
   getCommentsForScene: (sceneId) => {

@@ -3,12 +3,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useProjectStore } from '@/lib/store/project';
-import { useOutlineStore } from '@/lib/store/outline';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { executeGuideTool } from '@/lib/guide/tool-executor';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,107 +31,6 @@ interface GuideChatProps {
   onRequestOutline: () => void;
   /** Whether the outline generation phase is active. */
   isFinalizingOutline: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// Tool call dispatcher -- maps NDJSON tool_call events to Zustand actions
-// ---------------------------------------------------------------------------
-
-function dispatchGuideToolCall(name: string, input: Record<string, unknown>) {
-  const store = useStoryBibleStore.getState();
-
-  switch (name) {
-    case 'update_genre':
-      store.setGenre(input.genre as string);
-      break;
-    case 'update_tone':
-      store.setTone(input.tone as string);
-      break;
-    case 'update_logline':
-      store.setLogline(input.logline as string);
-      break;
-    case 'update_synopsis':
-      store.setSynopsis(input.synopsis as string);
-      break;
-    case 'add_theme':
-      store.addTheme(input.theme as string);
-      break;
-    case 'add_character': {
-      store.addCharacter(input.name as string);
-      // Update the just-added character with extra fields.
-      const bible = useStoryBibleStore.getState().bible;
-      const char = bible?.characters.find((c) => c.name === input.name);
-      if (char) {
-        const updates: Record<string, string> = {};
-        if (input.description) updates.description = input.description as string;
-        if (input.arc) updates.arc = input.arc as string;
-        if (input.notes) updates.notes = input.notes as string;
-        if (Object.keys(updates).length > 0) {
-          store.updateCharacter(char.id, updates);
-        }
-      }
-      break;
-    }
-    case 'add_character_relationship': {
-      const bible = useStoryBibleStore.getState().bible;
-      const charName = (input.characterName as string) ?? '';
-      const relatedName = (input.relatedCharacterName as string) ?? '';
-      const relationship = (input.relationship as string) ?? '';
-      const char = bible?.characters.find(
-        (c) => c.name.toLowerCase() === charName.toLowerCase(),
-      );
-      if (char) {
-        store.updateCharacter(char.id, {
-          relationships: [
-            ...char.relationships,
-            { characterId: relatedName, relationship },
-          ],
-        });
-      }
-      break;
-    }
-    case 'add_location': {
-      store.addLocation(input.name as string);
-      // Update the just-added location with description.
-      if (input.description) {
-        const bible = useStoryBibleStore.getState().bible;
-        const loc = bible?.locations.find((l) => l.name === input.name);
-        if (loc) {
-          store.updateLocation(loc.id, {
-            description: input.description as string,
-          });
-        }
-      }
-      break;
-    }
-    case 'update_beat': {
-      const bible = useStoryBibleStore.getState().bible;
-      const beatName = input.beatName as string;
-      const beat = bible?.beatSheet.find((b) => b.beat === beatName);
-      if (beat) {
-        store.updateBeat(beat.id, {
-          description: (input.description as string) ?? '',
-          completed: true,
-        });
-      }
-      break;
-    }
-    case 'generate_scene_outline': {
-      const outlineStore = useOutlineStore.getState();
-      const bible = useStoryBibleStore.getState().bible;
-      const lastScene = outlineStore.outline?.scenes.at(-1);
-      const beatName = input.beat as string | undefined;
-      const beatId = beatName
-        ? bible?.beatSheet.find((b) => b.beat === beatName)?.id ?? null
-        : null;
-      outlineStore.addPlannedScene(lastScene?.id ?? null, {
-        heading: input.heading as string,
-        summary: input.summary as string,
-        beatId,
-      });
-      break;
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -230,9 +129,9 @@ export default function GuideChat({
                 });
               }
 
-              // Dispatch tool calls to the Bible store.
+              // Dispatch tool calls using the centralized executor.
               if (parsed.type === 'tool_call' && parsed.name && parsed.input) {
-                dispatchGuideToolCall(
+                executeGuideTool(
                   parsed.name as string,
                   parsed.input as Record<string, unknown>,
                 );
