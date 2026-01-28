@@ -232,9 +232,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Set projectId so reconciliation can work
     useOutlineStore.setState({ projectId: id, isLoaded: true });
     const screenplay = useEditorStore.getState().screenplay;
-    console.log('[createProject] screenplay:', screenplay);
-    console.log('[createProject] screenplay.scenes:', screenplay?.scenes);
-    console.log('[createProject] outline projectId:', useOutlineStore.getState().projectId);
+    console.log('[createProject] v2 screenplay:', screenplay);
+    console.log('[createProject] v2 screenplay.scenes:', screenplay?.scenes);
+    console.log('[createProject] v2 outline projectId:', useOutlineStore.getState().projectId);
     if (screenplay) {
       useOutlineStore.getState().reconcileFromParse(screenplay);
       console.log('[createProject] after reconcile, outline:', useOutlineStore.getState().outline);
