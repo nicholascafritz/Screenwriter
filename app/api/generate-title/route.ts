@@ -36,6 +36,8 @@ const TITLE_MODEL = getModelForTask('generate-title');
 // ---------------------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
   try {
     const body = (await request.json()) as GenerateTitleRequestBody;
     const { userMessage, assistantMessage } = body;
@@ -47,10 +49,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = new Anthropic();
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'ANTHROPIC_API_KEY not configured' },
+        { status: 500 },
+      );
+    }
+
+    const client = new Anthropic({
+      apiKey,
+    });
     const modelParams = buildModelParams(TITLE_MODEL);
 
-    const response = await client.messages.create({
+    // Use streaming and collect the final message
+    const stream = client.messages.stream({
       ...modelParams,
       max_tokens: 30,
       system:
@@ -66,6 +78,7 @@ export async function POST(request: NextRequest) {
       ],
     });
 
+    const response = await stream.finalMessage();
     const textBlock = response.content.find((b) => b.type === 'text');
     const title = textBlock?.text?.trim().replace(/^["']|["']$/g, '') ?? '';
 

@@ -45,13 +45,13 @@ const MODE_EXAMPLES: Record<string, FewShotExample[]> = {
       userRequest: 'Make Sarah\'s dialogue in the diner scene more confrontational.',
       toolSequence: ['read_scene', 'edit_scene'],
       responsePattern:
-        'Read the target scene → rewrote Sarah\'s dialogue to be more direct and aggressive → applied edit. Brief one-sentence explanation of the changes made.',
+        'Read the target scene → rewrote Sarah\'s dialogue to be more direct and aggressive with flawless grammar and spelling → applied polished, error-free edit. Brief one-sentence explanation of the changes made.',
     },
     {
       userRequest: 'Tighten the action lines in the car chase.',
       toolSequence: ['read_scene', 'replace_text'],
       responsePattern:
-        'Read the scene → identified verbose action lines → used replace_text to make surgical cuts. One-line summary: "Trimmed 4 action blocks to shorter, punchier beats."',
+        'Read the scene → identified verbose action lines → used replace_text with clean, grammatically perfect replacements. One-line summary: "Trimmed 4 action blocks to shorter, punchier beats — all prose publication-ready."',
     },
   ],
 
@@ -60,13 +60,13 @@ const MODE_EXAMPLES: Record<string, FewShotExample[]> = {
       userRequest: 'The confrontation scene between Jack and Maria feels flat. Restructure it.',
       toolSequence: ['read_scene', 'edit_scene'],
       responsePattern:
-        'Read the scene → proposed restructure with detailed creative rationale: "Moved Jack\'s confession earlier to create dramatic irony; added a silence beat before Maria responds to build tension; shortened the final exchange so the scene ends on a gut punch."',
+        'Read the scene → proposed restructure with detailed creative rationale and flawless prose: "Moved Jack\'s confession earlier to create dramatic irony; added a silence beat before Maria responds to build tension; shortened the final exchange so the scene ends on a gut punch." All dialogue and action lines are grammatically perfect with zero typos.',
     },
     {
       userRequest: 'Jack and Maria sound too similar. Differentiate their voices.',
       toolSequence: ['get_characters', 'read_scene', 'edit_scene'],
       responsePattern:
-        'Checked character data → read their shared scenes → proposed dialogue edits with per-change reasoning: "Jack now speaks in clipped fragments (military background); Maria uses longer, more rhetorical constructions (lawyer)."',
+        'Checked character data → read their shared scenes → proposed polished, error-free dialogue edits with per-change reasoning: "Jack now speaks in clipped fragments (military background); Maria uses longer, more rhetorical constructions (lawyer)." Every line reviewed for spelling and grammar before submission.',
     },
   ],
 
@@ -85,7 +85,7 @@ const MODE_EXAMPLES: Record<string, FewShotExample[]> = {
         'validate_format',
       ],
       responsePattern:
-        'Analyzed full outline and character arcs → identified 3 optimal insertion points → seeded jealousy in Act 1 dialogue, escalated in Act 2 with a new confrontation scene, resolved in Act 3 → validated format after all changes. Provided a summary of each modification and how they connect.',
+        'Analyzed full outline and character arcs → identified 3 optimal insertion points → seeded jealousy in Act 1 dialogue, escalated in Act 2 with a new confrontation scene, resolved in Act 3. All new content is publication-ready with perfect grammar, spelling, and sentence structure → validated format after all changes. Provided a summary of each modification and how they connect.',
     },
     {
       userRequest: 'The second act drags. Fix the pacing.',
@@ -101,7 +101,7 @@ const MODE_EXAMPLES: Record<string, FewShotExample[]> = {
         'get_statistics',
       ],
       responsePattern:
-        'Analyzed statistics and outline to identify bloat → found two redundant scenes and three over-long dialogue exchanges → trimmed dialogue, cut one scene, merged another, reordered for momentum → validated format → confirmed improved page count and scene distribution.',
+        'Analyzed statistics and outline to identify bloat → found two redundant scenes and three over-long dialogue exchanges → trimmed dialogue with flawless rewrites, cut one scene, merged another, reordered for momentum → all edits are grammatically perfect with zero typos → validated format → confirmed improved page count and scene distribution.',
     },
   ],
 
