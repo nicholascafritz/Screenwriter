@@ -94,6 +94,7 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
   sections.push(buildContextSection(params));
   sections.push(buildStoryBibleSection());
   sections.push(buildFormattingRules());
+  sections.push(buildQualityControlSection());
 
   return sections.filter(Boolean).join('\n\n');
 }
@@ -180,10 +181,34 @@ function buildModeInstructions(mode: 'inline' | 'diff' | 'agent' | 'writers-room
         'immediately. Be concise in explanations. Focus on executing the',
         "writer's request efficiently and returning the updated content.",
         '',
+        '### Clarifying Questions',
+        '',
+        'Use the `ask_question` tool when:',
+        '- The request is ambiguous with multiple valid interpretations',
+        '- You need to know the user\'s preference between distinct creative approaches',
+        '- The task has significant implications (e.g., major rewrites, tone shifts)',
+        '- Understanding their vision would lead to better results',
+        '',
+        'Keep questions focused with 2-4 distinct options. Put your recommended option first.',
+        'Do NOT ask questions when the intent is clear from context or previous conversation.',
+        '',
+        '### Task Management',
+        '',
+        'For complex multi-step tasks (3+ distinct steps), use the `todo_write` tool',
+        'to track your progress:',
+        '',
+        '1. Create all todos upfront with "pending" status — the user will review and can edit.',
+        '2. Wait for the user to approve the plan before starting execution.',
+        '3. Mark exactly ONE todo as "in_progress" at a time (the one you\'re about to work on).',
+        '4. Mark todos "completed" immediately after finishing each step.',
+        '5. Update the entire todo list each time (include all items).',
+        '',
+        'For simple tasks (single edit, quick fix), skip todos and just execute directly.',
+        '',
         'Do NOT:',
-        '- Ask clarifying questions when the intent is clear from context.',
-        '- Present multiple options — pick the best approach and execute.',
+        '- Present multiple options in text — use `ask_question` instead.',
         '- Over-explain your changes — one or two sentences is enough.',
+        '- Use todos for simple single-step tasks.',
       ].join('\n');
 
     case 'diff':
@@ -500,6 +525,44 @@ function buildFormattingRules(): string {
     '',
     '10. Always insert proper blank lines between elements. Missing blank',
     '    lines will cause the parser to misidentify element types.',
+  ].join('\n');
+}
+
+function buildQualityControlSection(): string {
+  return [
+    '## Writing Quality Standards',
+    '',
+    'ALL generated screenplay content MUST meet these non-negotiable standards:',
+    '',
+    '**Grammar & Spelling:**',
+    '- Every sentence must be grammatically correct and complete',
+    '- Zero tolerance for typos, misspellings, or spelling errors',
+    '- Proper punctuation throughout (periods, commas, apostrophes)',
+    '- Correct capitalization per Fountain format rules',
+    '',
+    '**Sentence Structure:**',
+    '- Every sentence must be complete with subject and predicate',
+    '- No sentence fragments unless intentionally stylistic in dialogue',
+    '- No run-on sentences or comma splices',
+    '- Clear, unambiguous phrasing',
+    '',
+    '**Professional Standards:**',
+    '- Write at a professional, publishable quality level',
+    '- Action lines: clear, present tense, active voice',
+    '- Dialogue: natural speech patterns, appropriate to character',
+    '- Parentheticals: brief, lowercase, properly formatted',
+    '',
+    '**Pre-Submission Review:**',
+    'Before outputting ANY screenplay content via edit_scene, insert_scene,',
+    'or replace_text tools, mentally review the content for:',
+    '1. Spelling errors (especially character names, locations)',
+    '2. Incomplete sentences or fragments',
+    '3. Missing punctuation',
+    '4. Awkward phrasing or unclear meaning',
+    '5. Format compliance (blank lines, caps, structure)',
+    '',
+    'If any issues are found, fix them before submitting the tool call.',
+    'The goal is FLAWLESS, publication-ready screenplay content.',
   ].join('\n');
 }
 

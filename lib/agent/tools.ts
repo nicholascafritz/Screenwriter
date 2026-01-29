@@ -18,6 +18,8 @@ import { analyzeScreenplay } from '@/lib/fountain/analytics';
 import type { Screenplay, Scene } from '@/lib/fountain/types';
 import { STRUCTURE_TOOLS, executeStructureToolCall } from './structure-tools';
 import { GUIDE_TOOLS, executeGuideToolCall, isGuideToolName } from './guide-tools';
+import { TODO_TOOLS, executeTodoToolCall, isTodoToolName } from './todo-tools';
+import { QUESTION_TOOLS, executeQuestionToolCall, isQuestionToolName } from './question-tools';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useOutlineStore } from '@/lib/store/outline';
 import { useDialogueDismissalsStore } from '@/lib/store/dialogue-dismissals';
@@ -143,7 +145,9 @@ export const SCREENPLAY_TOOLS: ToolDefinition[] = [
     description:
       'Replace the content of a specific scene (identified by its heading) ' +
       'with new Fountain-formatted content. The new content should include ' +
-      'the scene heading.',
+      'the scene heading. CRITICAL: All content must be grammatically perfect, ' +
+      'free of typos, with complete sentences and proper punctuation. ' +
+      'Review your content for errors before submitting.',
     input_schema: {
       type: 'object',
       properties: {
@@ -167,7 +171,10 @@ export const SCREENPLAY_TOOLS: ToolDefinition[] = [
     name: 'insert_scene',
     description:
       'Insert a new scene after the specified scene. The content should ' +
-      'be valid Fountain text starting with a scene heading.',
+      'be valid Fountain text starting with a scene heading. CRITICAL: All ' +
+      'content must be grammatically perfect, free of typos, with complete ' +
+      'sentences and proper punctuation. Review your content for errors ' +
+      'before submitting.',
     input_schema: {
       type: 'object',
       properties: {
@@ -233,7 +240,9 @@ export const SCREENPLAY_TOOLS: ToolDefinition[] = [
     name: 'replace_text',
     description:
       'Find and replace text within the screenplay. Can be scoped to a ' +
-      'specific scene or applied globally.',
+      'specific scene or applied globally. CRITICAL: Replacement text must ' +
+      'be grammatically perfect, free of typos, with complete sentences ' +
+      'and proper punctuation. Review your content for errors before submitting.',
     input_schema: {
       type: 'object',
       properties: {
@@ -401,6 +410,16 @@ export function executeToolCall(
   // Guide tools are pass-through (store mutations happen client-side).
   if (isGuideToolName(name)) {
     return executeGuideToolCall(name, input);
+  }
+
+  // Todo tools are pass-through (store mutations happen client-side).
+  if (isTodoToolName(name)) {
+    return executeTodoToolCall(name, input);
+  }
+
+  // Question tools are pass-through (UI display and response happen client-side).
+  if (isQuestionToolName(name)) {
+    return executeQuestionToolCall(name, input);
   }
 
   switch (name) {
@@ -2002,6 +2021,10 @@ export function getToolsForMode(mode: string): ToolDefinition[] {
   }
   if (mode === 'story-guide') {
     return GUIDE_TOOLS;
+  }
+  // Include todo and question tools for inline (Write) and agent modes
+  if (mode === 'inline' || mode === 'agent') {
+    return [...SCREENPLAY_TOOLS, ...TODO_TOOLS, ...QUESTION_TOOLS];
   }
   return SCREENPLAY_TOOLS;
 }

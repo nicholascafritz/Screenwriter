@@ -40,6 +40,13 @@ import TrustDial from './TrustDial';
 import ContextBudgetIndicator from './ContextBudget';
 import VoiceSelector from '@/components/voice/VoiceSelector';
 import { buildContextComponents, type ContextBudget } from '@/lib/context/budget-manager';
+import { useAgentTodoStore } from '@/lib/store/agent-todos';
+import { useAgentQuestionStore } from '@/lib/store/agent-questions';
+import AgentTodoPanel from './AgentTodoPanel';
+import AgentQuestionPanel from './AgentQuestionPanel';
+import type { AgentTodo } from '@/lib/agent/todo-tools';
+import type { AgentQuestion, QuestionResponse } from '@/lib/agent/question-tools';
+import { formatQuestionResponse } from '@/lib/agent/question-tools';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,6 +84,15 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
   const voiceId = useProjectStore((s) => s.voiceId);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
+
+  const todos = useAgentTodoStore((s) => s.todos);
+  const todosVisible = useAgentTodoStore((s) => s.isVisible);
+  const awaitingApproval = useAgentTodoStore((s) => s.awaitingApproval);
+  const approvePlan = useAgentTodoStore((s) => s.approvePlan);
+  const clearTodos = useAgentTodoStore((s) => s.clearTodos);
+
+  const questionPending = useAgentQuestionStore((s) => s.isAwaitingResponse);
+  const clearQuestion = useAgentQuestionStore((s) => s.clearQuestion);
 
   // -- Local state ----------------------------------------------------------
 
@@ -333,6 +349,43 @@ export default function ChatPanel({ className }: ChatPanelProps) {
               // Skip the done marker.
               if (parsed.type === 'done') continue;
 
+              // Handle todo_write tool calls - update the todo store.
+              if (parsed.type === 'tool_call' && parsed.name === 'todo_write') {
+                const todos = parsed.input?.todos as AgentTodo[] | undefined;
+                if (todos && Array.isArray(todos)) {
+                  useAgentTodoStore.getState().setTodos(todos);
+                }
+              }
+
+              // Handle ask_question tool calls - show question UI and wait for response.
+              if (parsed.type === 'tool_call' && parsed.name === 'ask_question') {
+                const questionInput = parsed.input as Omit<AgentQuestion, 'id'> | undefined;
+                if (questionInput && questionInput.options) {
+                  const question: AgentQuestion = {
+                    ...questionInput,
+                    id: `q-${Date.now()}`,
+                  };
+
+                  // Set up question with response callback
+                  useAgentQuestionStore.getState().setPendingQuestion(
+                    question,
+                    (response: QuestionResponse) => {
+                      // Format the response and add as a user message to continue the conversation
+                      const responseText = formatQuestionResponse(response);
+                      // Add as assistant context (the AI will see this in the next turn)
+                      const state = useChatStore.getState();
+                      const msgs = [...state.messages];
+                      if (msgs.length > 0) {
+                        const last = { ...msgs[msgs.length - 1] };
+                        last.content += `\n\n**User selected:** ${responseText}`;
+                        msgs[msgs.length - 1] = last;
+                        useChatStore.setState({ messages: msgs });
+                      }
+                    }
+                  );
+                }
+              }
+
               // Prefer patch-based incremental update; fall back to full text.
               if (parsed.patch?.hunks || parsed.updatedScreenplay) {
                 const toolName = parsed.name || parsed.toolName || 'AI edit';
@@ -454,7 +507,21 @@ export default function ChatPanel({ className }: ChatPanelProps) {
       abortControllerRef.current.abort();
     }
     clearMessages();
-  }, [isStreaming, clearMessages]);
+    clearTodos();
+    clearQuestion();
+  }, [isStreaming, clearMessages, clearTodos, clearQuestion]);
+
+  // -- Todo panel handlers ----------------------------------------------------
+
+  const handleTodoCancel = useCallback(() => {
+    // Abort any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    // Clear todos and live edit queue
+    clearTodos();
+    useLiveEditStore.getState().clearQueue();
+  }, [clearTodos]);
 
   // -- Upgrade from Brainstorm to Write mode ----------------------------------
 
@@ -527,6 +594,17 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
       {/* Input area */}
       <div className="shrink-0 p-3 space-y-2">
+        {/* Agent question panel (clarifying questions) */}
+        {questionPending && <AgentQuestionPanel />}
+
+        {/* Agent todo panel (Write mode multi-step tasks) */}
+        {todosVisible && (
+          <AgentTodoPanel
+            onApprove={approvePlan}
+            onCancel={handleTodoCancel}
+          />
+        )}
+
         {/* Pending proposal indicator (Ask mode) */}
         {pendingProposal && (
           <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
