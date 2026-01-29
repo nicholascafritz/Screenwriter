@@ -190,6 +190,7 @@ export default function ChatPanel({ className }: ChatPanelProps) {
         'writers-room': 'Brainstorm',
         'diff': 'Ask',
         'inline': 'Write',
+        'agent': 'Agent',
       };
       addMessage({
         role: 'assistant',
