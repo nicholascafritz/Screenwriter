@@ -19,6 +19,7 @@ import CommentsPanel from '@/components/comments/CommentsPanel';
 import StoryBiblePanel from '@/components/storybible/StoryBiblePanel';
 import OperationLog from '@/components/editor/OperationLog';
 import LiveEditHighlight from '@/components/editor/LiveEditHighlight';
+import LiveEditIndicator from '@/components/editor/LiveEditIndicator';
 import FileDropZone from '@/components/upload/FileDropZone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -486,6 +487,7 @@ export default function EditorPage() {
           {/* Editor / Preview Area */}
           <div className="flex-1 flex overflow-hidden relative">
             <LiveEditHighlight />
+            <LiveEditIndicator />
             <OperationLog />
             {/* Show pending proposal diff when in Ask mode and there's a proposal */}
             {pendingProposal ? (

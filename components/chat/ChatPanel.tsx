@@ -29,6 +29,13 @@ import { Send, Trash2, Loader2, ArrowRight, GitCompare, Check, X } from 'lucide-
 import ChatMessage from './ChatMessage';
 import ChatSessionList from './ChatSessionList';
 import { useOperationsStore } from '@/lib/store/operations';
+import {
+  useLiveEditStore,
+  generateEditId,
+  calculateAffectedLines,
+} from '@/lib/store/live-edit';
+import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
+import { startLiveEditAnimation } from '@/lib/editor/animation-engine';
 import TrustDial from './TrustDial';
 import ContextBudgetIndicator from './ContextBudget';
 import VoiceSelector from '@/components/voice/VoiceSelector';
@@ -251,41 +258,42 @@ export default function ChatPanel({ className }: ChatPanelProps) {
                 const sceneName = parsed.sceneName || undefined;
 
                 // In Ask mode (diff), store as pending proposal for approval.
-                // In Write mode (inline), apply immediately.
+                // In Write mode (inline), queue for live animation.
                 if (activeMode === 'diff') {
                   const proposedContent = parsed.updatedScreenplay || content;
                   useEditorStore.getState().setPendingProposal(proposedContent, toolName);
                 } else {
-                  // Log the operation.
-                  const opId = useOperationsStore.getState().startOperation(
-                    toolName, `Editing${sceneName ? `: ${sceneName}` : ''}`, sceneName,
-                  );
-
                   // Flush any pending human edits and capture content before AI edit.
                   const editorState = useEditorStore.getState();
                   editorState.flushPendingDiff();
                   const beforeContent = editorState.content;
 
-                  // Mark as AI editing to suppress human-edit recording.
-                  useEditorStore.setState({ _isAIEditing: true });
+                  // Calculate affected line range from hunks.
+                  const hunks = parsed.patch?.hunks || [];
+                  const { startLine, endLine } = calculateAffectedLines(hunks);
 
-                  if (parsed.patch?.hunks) {
-                    useEditorStore.getState().applyPatch(parsed.patch.hunks);
-                  } else if (parsed.updatedScreenplay) {
-                    setContent(parsed.updatedScreenplay);
-                  }
-
-                  // Record the AI edit to the timeline.
-                  useEditorStore.getState().recordAIEdit(
-                    beforeContent,
-                    `AI: ${toolName}`,
+                  // Queue the edit for live animation.
+                  useLiveEditStore.getState().queueEdit({
+                    id: generateEditId(),
+                    toolName,
                     sceneName,
-                  );
+                    hunks,
+                    fullContent: parsed.updatedScreenplay || beforeContent,
+                    beforeContent,
+                    startLine,
+                    endLine,
+                  });
 
-                  useEditorStore.setState({ _isAIEditing: false });
-
-                  // Mark operation complete.
-                  useOperationsStore.getState().completeOperation(opId);
+                  // Start animation if not already running.
+                  const liveEditState = useLiveEditStore.getState();
+                  if (!liveEditState.isAnimating) {
+                    const handle = getEditorHandle();
+                    if (handle) {
+                      // Mark as AI editing to suppress human-edit recording.
+                      useEditorStore.setState({ _isAIEditing: true });
+                      startLiveEditAnimation(handle);
+                    }
+                  }
                 }
               }
 
@@ -331,41 +339,42 @@ export default function ChatPanel({ className }: ChatPanelProps) {
                 const sceneName = parsed.sceneName || undefined;
 
                 // In Ask mode (diff), store as pending proposal for approval.
-                // In Write mode (inline), apply immediately.
+                // In Write mode (inline), queue for live animation.
                 if (activeMode === 'diff') {
                   const proposedContent = parsed.updatedScreenplay || content;
                   useEditorStore.getState().setPendingProposal(proposedContent, toolName);
                 } else {
-                  // Log the operation.
-                  const opId = useOperationsStore.getState().startOperation(
-                    toolName, `Editing${sceneName ? `: ${sceneName}` : ''}`, sceneName,
-                  );
-
                   // Flush any pending human edits and capture content before AI edit.
                   const editorState = useEditorStore.getState();
                   editorState.flushPendingDiff();
                   const beforeContent = editorState.content;
 
-                  // Mark as AI editing to suppress human-edit recording.
-                  useEditorStore.setState({ _isAIEditing: true });
+                  // Calculate affected line range from hunks.
+                  const hunks = parsed.patch?.hunks || [];
+                  const { startLine, endLine } = calculateAffectedLines(hunks);
 
-                  if (parsed.patch?.hunks) {
-                    useEditorStore.getState().applyPatch(parsed.patch.hunks);
-                  } else if (parsed.updatedScreenplay) {
-                    setContent(parsed.updatedScreenplay);
-                  }
-
-                  // Record the AI edit to the timeline.
-                  useEditorStore.getState().recordAIEdit(
-                    beforeContent,
-                    `AI: ${toolName}`,
+                  // Queue the edit for live animation.
+                  useLiveEditStore.getState().queueEdit({
+                    id: generateEditId(),
+                    toolName,
                     sceneName,
-                  );
+                    hunks,
+                    fullContent: parsed.updatedScreenplay || beforeContent,
+                    beforeContent,
+                    startLine,
+                    endLine,
+                  });
 
-                  useEditorStore.setState({ _isAIEditing: false });
-
-                  // Mark operation complete.
-                  useOperationsStore.getState().completeOperation(opId);
+                  // Start animation if not already running.
+                  const liveEditState = useLiveEditStore.getState();
+                  if (!liveEditState.isAnimating) {
+                    const handle = getEditorHandle();
+                    if (handle) {
+                      // Mark as AI editing to suppress human-edit recording.
+                      useEditorStore.setState({ _isAIEditing: true });
+                      startLiveEditAnimation(handle);
+                    }
+                  }
                 }
               }
 

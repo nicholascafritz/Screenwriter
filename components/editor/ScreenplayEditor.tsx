@@ -26,7 +26,7 @@ interface ScreenplayEditorProps {
   onContentChange?: (content: string) => void;
 }
 
-/** Imperative handle exposed via the module-level getter. */
+/** Basic imperative handle exposed via the module-level getter. */
 export interface ScreenplayEditorHandle {
   /** Return the current editor content. */
   getContent: () => string;
@@ -40,14 +40,30 @@ export interface ScreenplayEditorHandle {
   revealLine: (line: number) => void;
 }
 
+/** Extended handle with additional methods for live edit animation. */
+export interface ExtendedEditorHandle extends ScreenplayEditorHandle {
+  /** Insert text at a specific position without replacing entire document. */
+  insertText: (line: number, column: number, text: string) => void;
+  /** Delete a range of text. */
+  deleteRange: (startLine: number, startCol: number, endLine: number, endCol: number) => void;
+  /** Scroll to line with smooth animation. */
+  revealLineSmooth: (line: number) => void;
+  /** Show AI typing cursor decoration at position. */
+  showTypingCursor: (line: number, column: number) => void;
+  /** Hide the AI typing cursor. */
+  hideTypingCursor: () => void;
+  /** Highlight lines that are about to be deleted. */
+  highlightDeletingLines: (startLine: number, endLine: number) => void;
+}
+
 // ---------------------------------------------------------------------------
 // Module-level handle (accessible outside React tree)
 // ---------------------------------------------------------------------------
 
-let _handle: ScreenplayEditorHandle | null = null;
+let _handle: ExtendedEditorHandle | null = null;
 
 /** Retrieve the imperative handle for the mounted editor instance. */
-export function getEditorHandle(): ScreenplayEditorHandle | null {
+export function getEditorHandle(): ExtendedEditorHandle | null {
   return _handle;
 }
 
@@ -100,6 +116,8 @@ export default function ScreenplayEditor({
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const modelRef = useRef<Monaco.editor.ITextModel | null>(null);
   const decorationsRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+  const cursorDecorationRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+  const deletingDecorationRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
 
   // ---- Store bindings -----------------------------------------------------
 
@@ -155,8 +173,10 @@ export default function ScreenplayEditor({
       editorRef.current = editor;
       modelRef.current = editor.getModel();
 
-      // Create a decoration collection for highlight operations.
+      // Create decoration collections for various operations.
       decorationsRef.current = editor.createDecorationsCollection([]);
+      cursorDecorationRef.current = editor.createDecorationsCollection([]);
+      deletingDecorationRef.current = editor.createDecorationsCollection([]);
 
       // -- Cursor position tracking -----------------------------------------
       editor.onDidChangeCursorPosition((e) => {
@@ -220,6 +240,83 @@ export default function ScreenplayEditor({
           editor.revealLineInCenter(line);
           // Focus the editor to ensure the cursor is visible
           editor.focus();
+        },
+
+        // ---- Extended methods for live edit animation ----
+
+        insertText: (line: number, column: number, text: string) => {
+          const model = editor.getModel();
+          if (!model) return;
+
+          model.applyEdits([
+            {
+              range: new monaco.Range(line, column, line, column),
+              text: text,
+              forceMoveMarkers: true,
+            },
+          ]);
+        },
+
+        deleteRange: (
+          startLine: number,
+          startCol: number,
+          endLine: number,
+          endCol: number
+        ) => {
+          const model = editor.getModel();
+          if (!model) return;
+
+          model.applyEdits([
+            {
+              range: new monaco.Range(startLine, startCol, endLine, endCol),
+              text: '',
+              forceMoveMarkers: true,
+            },
+          ]);
+        },
+
+        revealLineSmooth: (line: number) => {
+          // Use smooth scrolling animation (0 = smooth, 1 = immediate)
+          editor.revealLineInCenterIfOutsideViewport(line, 0);
+        },
+
+        showTypingCursor: (line: number, column: number) => {
+          if (!cursorDecorationRef.current) return;
+
+          const decorations: Monaco.editor.IModelDeltaDecoration[] = [
+            {
+              range: new monaco.Range(line, column, line, column),
+              options: {
+                className: 'ai-typing-cursor-line',
+                beforeContentClassName: 'ai-typing-cursor',
+                stickiness:
+                  monaco.editor.TrackedRangeStickiness
+                    .NeverGrowsWhenTypingAtEdges,
+              },
+            },
+          ];
+          cursorDecorationRef.current.set(decorations);
+        },
+
+        hideTypingCursor: () => {
+          if (cursorDecorationRef.current) {
+            cursorDecorationRef.current.clear();
+          }
+        },
+
+        highlightDeletingLines: (startLine: number, endLine: number) => {
+          if (!deletingDecorationRef.current) return;
+
+          const decorations: Monaco.editor.IModelDeltaDecoration[] = [
+            {
+              range: new monaco.Range(startLine, 1, endLine, 1),
+              options: {
+                isWholeLine: true,
+                className: 'screenplay-deleting-line',
+              },
+            },
+          ];
+          deletingDecorationRef.current.set(decorations);
         },
       };
     },

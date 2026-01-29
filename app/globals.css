@@ -299,6 +299,45 @@
   100% { background-color: hsl(214 100% 50% / 0.08); }
 }
 
+/* AI Typing Cursor - blinking cursor during live edit animation */
+@keyframes ai-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.ai-typing-cursor {
+  position: relative;
+}
+
+.ai-typing-cursor::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 1.2em;
+  background: hsl(214 100% 50%);
+  animation: ai-cursor-blink 0.8s infinite;
+  border-radius: 1px;
+}
+
+.ai-typing-cursor-line {
+  /* Subtle line highlight during typing */
+}
+
+/* Lines being actively edited - brighter highlight */
+.screenplay-editing-line {
+  background-color: hsl(214 100% 50% / 0.15) !important;
+  border-left: 3px solid hsl(214 100% 50%);
+}
+
+/* Lines about to be deleted - red tint */
+.screenplay-deleting-line {
+  background-color: hsl(0 80% 50% / 0.15) !important;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
 @keyframes pulse-dot {
   0%, 80%, 100% { opacity: 0.3; }
   40% { opacity: 1; }
