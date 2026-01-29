@@ -2017,13 +2017,17 @@ const READ_ONLY_TOOLS = new Set([
  */
 export function getToolsForMode(mode: string): ToolDefinition[] {
   if (mode === 'writers-room') {
-    return SCREENPLAY_TOOLS.filter((t) => READ_ONLY_TOOLS.has(t.name));
+    // Brainstorm mode: read-only tools + question tools for mode transitions
+    return [
+      ...SCREENPLAY_TOOLS.filter((t) => READ_ONLY_TOOLS.has(t.name)),
+      ...QUESTION_TOOLS,
+    ];
   }
   if (mode === 'story-guide') {
     return GUIDE_TOOLS;
   }
-  // Include todo and question tools for inline (Write) and agent modes
-  if (mode === 'inline' || mode === 'agent') {
+  // Include todo and question tools for inline (Write), diff (Ask), and agent modes
+  if (mode === 'inline' || mode === 'agent' || mode === 'diff') {
     return [...SCREENPLAY_TOOLS, ...TODO_TOOLS, ...QUESTION_TOOLS];
   }
   return SCREENPLAY_TOOLS;
