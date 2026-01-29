@@ -26,6 +26,9 @@ interface AgentTodoState {
   /** Whether the user is currently editing the plan */
   isEditing: boolean;
 
+  /** Whether execution has started (prevents re-triggering approval) */
+  executionStarted: boolean;
+
   /** Set the entire todo list (replaces existing) */
   setTodos: (todos: AgentTodo[]) => void;
 
@@ -66,16 +69,22 @@ export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
   isVisible: false,
   awaitingApproval: false,
   isEditing: false,
+  executionStarted: false,
 
   setTodos: (todos) => {
+    const { executionStarted } = get();
+
     // Check if this is an initial plan (all todos are pending)
     const allPending = todos.length > 0 && todos.every((t) => t.status === 'pending');
+
+    // Only trigger approval if execution hasn't started yet
+    // This prevents re-triggering approval when AI updates todos during execution
+    const shouldAwaitApproval = allPending && !executionStarted;
 
     set({
       todos,
       isVisible: todos.length > 0,
-      // If all todos are pending, this is a new plan - await approval
-      awaitingApproval: allPending,
+      awaitingApproval: shouldAwaitApproval,
       isEditing: false,
     });
   },
@@ -86,6 +95,7 @@ export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
       isVisible: false,
       awaitingApproval: false,
       isEditing: false,
+      executionStarted: false,
     });
   },
 
@@ -98,7 +108,7 @@ export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
   },
 
   approvePlan: () => {
-    set({ awaitingApproval: false, isEditing: false });
+    set({ awaitingApproval: false, isEditing: false, executionStarted: true });
   },
 
   setEditing: (editing) => {
