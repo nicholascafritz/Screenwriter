@@ -28,11 +28,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import {
-  useAgentTodoStore,
-  selectInProgressTodo,
-  selectTodoStats,
-} from '@/lib/store/agent-todos';
+import { useAgentTodoStore } from '@/lib/store/agent-todos';
 import type { AgentTodo } from '@/lib/agent/todo-tools';
 
 // ---------------------------------------------------------------------------
@@ -264,17 +260,25 @@ export default function AgentTodoPanel({
   onCancel,
   className,
 }: AgentTodoPanelProps) {
-  const todos = useAgentTodoStore((s) => s.todos);
-  const isVisible = useAgentTodoStore((s) => s.isVisible);
-  const awaitingApproval = useAgentTodoStore((s) => s.awaitingApproval);
-  const isEditing = useAgentTodoStore((s) => s.isEditing);
-  const setEditing = useAgentTodoStore((s) => s.setEditing);
-  const updateTodo = useAgentTodoStore((s) => s.updateTodo);
-  const removeTodo = useAgentTodoStore((s) => s.removeTodo);
-  const addTodo = useAgentTodoStore((s) => s.addTodo);
-  const moveTodo = useAgentTodoStore((s) => s.moveTodo);
-  const inProgress = useAgentTodoStore(selectInProgressTodo);
-  const stats = useAgentTodoStore(selectTodoStats);
+  // Get all state in a single subscription to avoid multiple re-renders
+  const {
+    todos,
+    isVisible,
+    awaitingApproval,
+    isEditing,
+    setEditing,
+    updateTodo,
+    removeTodo,
+    addTodo,
+    moveTodo,
+  } = useAgentTodoStore();
+
+  // Compute derived values
+  const inProgress = todos.find((t) => t.status === 'in_progress');
+  const completed = todos.filter((t) => t.status === 'completed').length;
+  const total = todos.length;
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const stats = { completed, total, percent };
 
   if (!isVisible || todos.length === 0) {
     return null;
