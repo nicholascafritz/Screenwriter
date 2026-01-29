@@ -36,7 +36,7 @@ import {
 } from '@/lib/store/live-edit';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import { startLiveEditAnimation } from '@/lib/editor/animation-engine';
-// import ModeIndicator from './ModeIndicator';
+import ModeIndicator from './ModeIndicator';
 import ContextBudgetIndicator from './ContextBudget';
 import VoiceSelector from '@/components/voice/VoiceSelector';
 import { buildContextComponents, type ContextBudget } from '@/lib/context/budget-manager';
@@ -625,7 +625,10 @@ export default function ChatPanel({ className }: ChatPanelProps) {
       {/* Header: Mode indicator, voice selector, and context budget */}
       <div className="shrink-0 space-y-2 p-3 border-b border-border">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
+            <ModeIndicator />
+          </div>
           <div className="flex items-center gap-1">
             {contextBudget && (
               <ContextBudgetIndicator budget={contextBudget} />
@@ -676,13 +679,13 @@ export default function ChatPanel({ className }: ChatPanelProps) {
         {/* Agent question panel (clarifying questions) */}
         {questionPending && <AgentQuestionPanel />}
 
-        {/* Agent todo panel (Write mode multi-step tasks) - temporarily disabled */}
-        {/* {todosVisible && (
+        {/* Agent todo panel (Write mode multi-step tasks) */}
+        {todosVisible && (
           <AgentTodoPanel
             onApprove={handlePlanApproval}
             onCancel={handleTodoCancel}
           />
-        )} */}
+        )}
 
         {/* Pending proposal indicator (Ask mode) */}
         {pendingProposal && (
