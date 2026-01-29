@@ -114,8 +114,17 @@ export async function POST(request: NextRequest) {
     const client = new Anthropic();
 
     // Build the messages array from history + the new user message.
+    // Filter out any messages with empty content (Claude API requires non-empty content).
+    const filteredHistory = (history ?? []).filter((m) => {
+      if (typeof m.content === 'string') {
+        return m.content.trim().length > 0;
+      }
+      // For array content (tool results, images), keep if non-empty array
+      return Array.isArray(m.content) && m.content.length > 0;
+    });
+
     const messages: Anthropic.MessageParam[] = [
-      ...(history ?? []),
+      ...filteredHistory,
       { role: 'user', content: message },
     ];
 
