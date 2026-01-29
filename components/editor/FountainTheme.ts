@@ -1,11 +1,10 @@
 // ---------------------------------------------------------------------------
-// Fountain Screenplay Format -- Monaco Dark Theme
+// Fountain Screenplay Format -- Monaco Light Theme
 // ---------------------------------------------------------------------------
 //
-// Defines a custom dark theme called "fountain-dark" designed specifically
+// Defines a custom light theme called "fountain-light" designed specifically
 // for screenwriting in the Fountain format.  The colour palette is chosen
-// for long writing sessions: a dark blue-black background with carefully
-// selected accent colours that map to each screenplay element type.
+// for a clean, Notion-inspired aesthetic with good contrast and readability.
 //
 // Usage with @monaco-editor/react:
 //
@@ -15,7 +14,7 @@
 //     beforeMount={(monaco) => {
 //       registerFountainTheme(monaco);
 //     }}
-//     theme="fountain-dark"
+//     theme="fountain-light"
 //   />
 //
 // The token names referenced here correspond to those emitted by the
@@ -30,10 +29,10 @@ import type * as Monaco from 'monaco-editor';
 // ---------------------------------------------------------------------------
 
 /** The theme name to pass to Monaco's `theme` prop. */
-export const FOUNTAIN_THEME_NAME = 'fountain-dark';
+export const FOUNTAIN_THEME_NAME = 'fountain-light';
 
 /**
- * Register the `fountain-dark` theme with the given Monaco instance.
+ * Register the `fountain-light` theme with the given Monaco instance.
  *
  * Call this inside the `beforeMount` callback of `@monaco-editor/react`
  * (alongside `registerFountainLanguage`).
@@ -46,93 +45,93 @@ export function registerFountainTheme(monaco: typeof Monaco): void {
 // Colour palette
 // ---------------------------------------------------------------------------
 //
-// All colours are chosen to satisfy WCAG AA contrast against the dark
-// background while remaining visually distinct from one another.
+// All colours are chosen for good contrast against a light background
+// while remaining visually distinct from one another.
 //
 
 const palette = {
-  /** Editor background -- dark blue-black. */
-  background: '#1a1a2e',
+  /** Editor background -- off-white. */
+  background: '#fafafa',
 
   /** Default foreground for action / body text. */
-  foreground: '#e2e8f0',
+  foreground: '#262626',
 
-  /** Scene headings (INT./EXT.) -- bright green. */
-  sceneHeading: '#4ade80',
+  /** Scene headings (INT./EXT.) -- emerald green. */
+  sceneHeading: '#059669',
 
-  /** Character cues -- bright blue. */
-  character: '#60a5fa',
+  /** Character cues -- blue. */
+  character: '#2563eb',
 
-  /** Dialogue text -- warm white. */
-  dialogue: '#e2e8f0',
+  /** Dialogue text -- dark text. */
+  dialogue: '#262626',
 
-  /** Action text -- light gray. */
-  action: '#94a3b8',
+  /** Action text -- dark gray. */
+  action: '#525252',
 
-  /** Transitions (CUT TO: etc.) -- purple. */
-  transition: '#c084fc',
+  /** Transitions (CUT TO: etc.) -- violet. */
+  transition: '#7c3aed',
 
-  /** Parentheticals -- yellow. */
-  parenthetical: '#fbbf24',
+  /** Parentheticals -- amber/orange. */
+  parenthetical: '#d97706',
 
   /** Section headings (#, ##, ###) -- orange. */
-  section: '#fb923c',
+  section: '#ea580c',
 
-  /** Notes ([[ ]]) -- dim gray. */
-  note: '#64748b',
+  /** Notes ([[ ]]) -- muted gray. */
+  note: '#737373',
 
-  /** Boneyard comments -- darker dim gray. */
-  boneyard: '#475569',
+  /** Boneyard comments -- lighter gray. */
+  boneyard: '#a3a3a3',
 
-  /** Synopsis lines (= ...) -- muted teal. */
-  synopsis: '#2dd4bf',
+  /** Synopsis lines (= ...) -- teal. */
+  synopsis: '#0d9488',
 
   /** Lyrics (~ ...) -- pink. */
-  lyric: '#f472b6',
+  lyric: '#db2777',
 
-  /** Centered text (> ... <) -- cyan. */
-  centered: '#22d3ee',
+  /** Centered text (> ... <) -- cyan/blue. */
+  centered: '#0891b2',
 
-  /** Page breaks (===) -- bright white. */
-  pageBreak: '#ffffff',
+  /** Page breaks (===) -- dark. */
+  pageBreak: '#262626',
 
-  /** Title page key: value pairs -- muted gold. */
-  titlePage: '#d4a574',
+  /** Title page key: value pairs -- brown. */
+  titlePage: '#92400e',
 
   /** Bold emphasis modifier. */
-  bold: '#f8fafc',
+  bold: '#171717',
 
   /** Italic emphasis modifier. */
-  italic: '#cbd5e1',
+  italic: '#404040',
 
   // -- Editor chrome colours --
 
   /** Line numbers. */
-  lineNumber: '#4a5568',
+  lineNumber: '#a3a3a3',
 
   /** Active line number. */
-  lineNumberActive: '#94a3b8',
+  lineNumberActive: '#525252',
 
   /** Cursor colour. */
-  cursor: '#ffffff',
+  cursor: '#262626',
 
   /** Selection highlight. */
-  selection: '#3b82f633',
+  selection: '#0066ff22',
 
   /** Current line highlight. */
-  lineHighlight: '#1e293b',
+  lineHighlight: '#f5f5f5',
 
   /** Widget / suggestion background. */
-  widget: '#1e1e3a',
+  widget: '#ffffff',
 
   /** Widget border. */
-  widgetBorder: '#2d2d52',
+  widgetBorder: '#e5e5e5',
 
   /** Scrollbar. */
-  scrollbar: '#2d2d52',
+  scrollbar: '#d4d4d4',
 
   /** Minimap. */
-  minimapBackground: '#16162a',
+  minimapBackground: '#f5f5f5',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -140,7 +139,7 @@ const palette = {
 // ---------------------------------------------------------------------------
 
 const themeData: Monaco.editor.IStandaloneThemeData = {
-  base: 'vs-dark',
+  base: 'vs',
   inherit: true,
 
   colors: {
@@ -155,8 +154,8 @@ const themeData: Monaco.editor.IStandaloneThemeData = {
 
     // -- Selection -------------------------------------------------------
     'editor.selectionBackground': palette.selection,
-    'editor.inactiveSelectionBackground': '#3b82f61a',
-    'editor.selectionHighlightBackground': '#3b82f61a',
+    'editor.inactiveSelectionBackground': '#0066ff11',
+    'editor.selectionHighlightBackground': '#0066ff11',
 
     // -- Line numbers ----------------------------------------------------
     'editorLineNumber.foreground': palette.lineNumber,
@@ -166,12 +165,12 @@ const themeData: Monaco.editor.IStandaloneThemeData = {
     'editorGutter.background': palette.background,
 
     // -- Indentation guides ----------------------------------------------
-    'editorIndentGuide.background': '#2d2d52',
-    'editorIndentGuide.activeBackground': '#4a5568',
+    'editorIndentGuide.background': '#e5e5e5',
+    'editorIndentGuide.activeBackground': '#d4d4d4',
 
     // -- Bracket matching ------------------------------------------------
-    'editorBracketMatch.background': '#3b82f633',
-    'editorBracketMatch.border': '#3b82f680',
+    'editorBracketMatch.background': '#0066ff22',
+    'editorBracketMatch.border': '#0066ff44',
 
     // -- Widgets (autocomplete, hover, etc.) -----------------------------
     'editorWidget.background': palette.widget,
@@ -181,10 +180,10 @@ const themeData: Monaco.editor.IStandaloneThemeData = {
     'editorSuggestWidget.border': palette.widgetBorder,
     'editorSuggestWidget.foreground': palette.foreground,
     'editorSuggestWidget.highlightForeground': palette.character,
-    'editorSuggestWidget.selectedBackground': '#2d2d52',
+    'editorSuggestWidget.selectedBackground': '#f5f5f5',
 
     // -- Scrollbar -------------------------------------------------------
-    'scrollbar.shadow': '#00000000',
+    'scrollbar.shadow': '#00000008',
     'scrollbarSlider.background': palette.scrollbar + '80',
     'scrollbarSlider.hoverBackground': palette.scrollbar + 'cc',
     'scrollbarSlider.activeBackground': palette.scrollbar + 'ff',
@@ -198,17 +197,17 @@ const themeData: Monaco.editor.IStandaloneThemeData = {
     'editor.findMatchHighlightBackground': '#fbbf2420',
 
     // -- Word highlight --------------------------------------------------
-    'editor.wordHighlightBackground': '#3b82f620',
-    'editor.wordHighlightStrongBackground': '#3b82f630',
+    'editor.wordHighlightBackground': '#0066ff15',
+    'editor.wordHighlightStrongBackground': '#0066ff25',
 
     // -- Overview ruler (right-edge markers) -----------------------------
     'editorOverviewRuler.border': '#00000000',
 
     // -- Drop-down / list ------------------------------------------------
-    'list.hoverBackground': '#2d2d52',
-    'list.activeSelectionBackground': '#3b82f633',
+    'list.hoverBackground': '#f5f5f5',
+    'list.activeSelectionBackground': '#0066ff22',
     'list.activeSelectionForeground': palette.foreground,
-    'list.focusBackground': '#3b82f633',
+    'list.focusBackground': '#0066ff22',
     'list.highlightForeground': palette.character,
   },
 
