@@ -9,7 +9,7 @@
 //   Tier 2 - Sonnet 4.5: Screenplay writing, scene editing, dialogue craft,
 //                         tool-driven execution.  Uses extended thinking for
 //                         creative output that benefits from deliberation.
-//   Tier 3 - Haiku 3.5:  Utility tasks — summarization, simple analysis,
+//   Tier 3 - Haiku 4.5:  Utility tasks — summarization, simple analysis,
 //                         format validation, and lightweight read-only queries.
 //
 // Each model can run with or without extended thinking.  Thinking adds a
@@ -31,8 +31,8 @@ export const MODELS = {
   /** Claude Sonnet 4.5 — strong creative writing, fast tool use. */
   sonnet: 'claude-sonnet-4-5-20250929',
 
-  /** Claude Haiku 3.5 — fastest, best for utility/mechanical tasks. */
-  haiku: 'claude-haiku-3-5-20241022',
+  /** Claude Haiku 4.5 — fastest, best for utility/mechanical tasks. */
+  haiku: 'claude-haiku-4-5-20251001',
 } as const;
 
 export type ModelId = (typeof MODELS)[keyof typeof MODELS];
@@ -139,14 +139,14 @@ export const SONNET_STANDARD: ModelConfig = {
 };
 
 /**
- * Haiku 3.5 — fast utility model for mechanical tasks.
+ * Haiku 4.5 — fast utility model for mechanical tasks.
  *
  * Used for conversation summarization, simple read-only analysis,
  * and format validation where deep creative reasoning is unnecessary.
  */
 export const HAIKU_STANDARD: ModelConfig = {
   model: MODELS.haiku,
-  label: 'Haiku 3.5',
+  label: 'Haiku 4.5',
   maxTokens: 2048,
 };
 
