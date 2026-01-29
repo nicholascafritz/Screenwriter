@@ -14,7 +14,7 @@ import Footer from '@/components/layout/Footer';
 import NewProjectModal from '@/components/project/NewProjectModal';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
-import { FilePlus, FileText, Upload, LayoutGrid, List, Star, Archive, ArrowUpDown, Filter } from 'lucide-react';
+import { FilePlus, FileText, Upload, LayoutGrid, List, Star, Archive, ArrowUpDown, Filter, Trash2, X, CheckSquare } from 'lucide-react';
 import type { ProjectMetadata } from '@/lib/store/project';
 import type { ProjectStatus } from '@/lib/store/types';
 import { cn } from '@/lib/utils';
@@ -74,6 +74,12 @@ export default function HomePage() {
   const loadProjectList = useProjectStore((s) => s.loadProjectList);
   const toggleFavorite = useProjectStore((s) => s.toggleFavorite);
   const toggleArchive = useProjectStore((s) => s.toggleArchive);
+  const bulkDeleteProjects = useProjectStore((s) => s.bulkDeleteProjects);
+  const bulkToggleArchive = useProjectStore((s) => s.bulkToggleArchive);
+
+  // Multi-select state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Filter and sort projects
   const filteredProjects = useMemo(() => {
@@ -183,6 +189,47 @@ export default function HomePage() {
     [importFiles]
   );
 
+  // Selection handlers
+  const handleSelectionChange = useCallback((id: string, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredProjects.map((p) => p.id)));
+  }, [filteredProjects]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleExitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    const confirmed = window.confirm(`Are you sure you want to delete ${selectedIds.size} project${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`);
+    if (confirmed) {
+      await bulkDeleteProjects(Array.from(selectedIds));
+      handleExitSelectionMode();
+    }
+  }, [selectedIds, bulkDeleteProjects, handleExitSelectionMode]);
+
+  const handleBulkArchive = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    await bulkToggleArchive(Array.from(selectedIds), !showArchived);
+    handleExitSelectionMode();
+  }, [selectedIds, bulkToggleArchive, showArchived, handleExitSelectionMode]);
+
   // -- Render ---------------------------------------------------------------
 
   const hasProjects = projects.length > 0;
@@ -250,6 +297,60 @@ export default function HomePage() {
           {/* Project grid */}
           {hasProjects ? (
             <div className="w-full max-w-5xl">
+              {/* Bulk action bar */}
+              {selectionMode && (
+                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-secondary border border-border">
+                  <button
+                    onClick={handleExitSelectionMode}
+                    className="p-1.5 rounded hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
+                    title="Exit selection mode"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-medium text-foreground">
+                    {selectedIds.size} selected
+                  </span>
+                  <div className="flex items-center gap-2 ml-2">
+                    <button
+                      onClick={handleSelectAll}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Select all ({filteredProjects.length})
+                    </button>
+                    {selectedIds.size > 0 && (
+                      <button
+                        onClick={handleDeselectAll}
+                        className="text-xs text-muted-foreground hover:underline"
+                      >
+                        Deselect all
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={handleBulkArchive}
+                      disabled={selectedIds.size === 0}
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                      {showArchived ? 'Unarchive' : 'Archive'}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={handleBulkDelete}
+                      disabled={selectedIds.size === 0}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Section header with view toggle */}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-foreground">
@@ -260,29 +361,42 @@ export default function HomePage() {
                     </span>
                   )}
                 </h2>
-                <div className="flex items-center rounded-md border border-border p-0.5 bg-secondary">
-                  <button
-                    className={`p-1.5 rounded transition-colors ${
-                      viewMode === 'grid'
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                    onClick={() => setViewMode('grid')}
-                    title="Grid view"
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    className={`p-1.5 rounded transition-colors ${
-                      viewMode === 'list'
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                    onClick={() => setViewMode('list')}
-                    title="List view"
-                  >
-                    <List className="h-3.5 w-3.5" />
-                  </button>
+                <div className="flex items-center gap-2">
+                  {/* Select mode toggle */}
+                  {!selectionMode && filteredProjects.length > 0 && (
+                    <button
+                      className="p-1.5 rounded border border-border hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setSelectionMode(true)}
+                      title="Select projects"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {/* View mode toggle */}
+                  <div className="flex items-center rounded-md border border-border p-0.5 bg-secondary">
+                    <button
+                      className={`p-1.5 rounded transition-colors ${
+                        viewMode === 'grid'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setViewMode('grid')}
+                      title="Grid view"
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      className={`p-1.5 rounded transition-colors ${
+                        viewMode === 'list'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setViewMode('list')}
+                      title="List view"
+                    >
+                      <List className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -368,6 +482,9 @@ export default function HomePage() {
                         onDelete={removeProject}
                         onToggleFavorite={toggleFavorite}
                         onToggleArchive={toggleArchive}
+                        selectionMode={selectionMode}
+                        isSelected={selectedIds.has(project.id)}
+                        onSelectionChange={handleSelectionChange}
                       />
                     ))}
                   </div>
@@ -383,6 +500,9 @@ export default function HomePage() {
                         onDelete={removeProject}
                         onToggleFavorite={toggleFavorite}
                         onToggleArchive={toggleArchive}
+                        selectionMode={selectionMode}
+                        isSelected={selectedIds.has(project.id)}
+                        onSelectionChange={handleSelectionChange}
                         compact
                       />
                     ))}

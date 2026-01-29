@@ -138,6 +138,12 @@ export interface ProjectState {
 
   /** Update project metadata (status, genre, etc.). */
   updateProjectMetadata: (id: string, updates: Partial<Pick<ProjectData, 'status' | 'genre' | 'logline' | 'notes' | 'targetLength'>>) => Promise<void>;
+
+  /** Delete multiple projects at once. */
+  bulkDeleteProjects: (ids: string[]) => Promise<void>;
+
+  /** Archive or unarchive multiple projects at once. */
+  bulkToggleArchive: (ids: string[], archive: boolean) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -591,6 +597,56 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         notes: data.notes,
         targetLength: data.targetLength,
       });
+    }
+
+    await get().loadProjectList();
+  },
+
+  bulkDeleteProjects: async (ids: string[]) => {
+    const { userId, activeProjectId } = get();
+    if (!userId || ids.length === 0) return;
+
+    // Delete all projects in parallel
+    await Promise.all(
+      ids.map(async (id) => {
+        await deleteProjectFromStorage(userId, id);
+        await deleteSessionsForProject(userId, id);
+        await deleteTimelineEntries(userId, id);
+        await deleteCommentsForProject(userId, id);
+        await deleteStoryBible(userId, id);
+        await deleteOutline(userId, id);
+      })
+    );
+
+    // If we deleted the active project, clear active state.
+    if (activeProjectId && ids.includes(activeProjectId)) {
+      set({ activeProjectId: null });
+      persistActiveProjectId(null);
+      get().resetStores();
+    }
+
+    await get().loadProjectList();
+  },
+
+  bulkToggleArchive: async (ids: string[], archive: boolean) => {
+    const { userId, activeProjectId } = get();
+    if (!userId || ids.length === 0) return;
+
+    // Update all projects in parallel
+    await Promise.all(
+      ids.map(async (id) => {
+        const data = await loadProject(userId, id);
+        if (!data) return;
+
+        data.isArchived = archive;
+        data.updatedAt = Date.now();
+        await saveProject(userId, data);
+      })
+    );
+
+    // Update local state if the active project was affected.
+    if (activeProjectId && ids.includes(activeProjectId)) {
+      set({ isArchived: archive });
     }
 
     await get().loadProjectList();

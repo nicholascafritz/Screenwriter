@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { ProjectSummary, ProjectStatus } from '@/lib/store/types';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { FileText, MoreVertical, Pencil, Copy, Trash2, Star, Archive, Film } from 'lucide-react';
+import { FileText, MoreVertical, Pencil, Copy, Trash2, Star, Archive, Film, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -61,6 +61,12 @@ interface ProjectCardProps {
   onToggleArchive?: (id: string) => void;
   /** Render as a compact row for list view */
   compact?: boolean;
+  /** Whether selection mode is active */
+  selectionMode?: boolean;
+  /** Whether this card is selected */
+  isSelected?: boolean;
+  /** Callback when selection changes */
+  onSelectionChange?: (id: string, selected: boolean) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +82,9 @@ export default function ProjectCard({
   onToggleFavorite,
   onToggleArchive,
   compact = false,
+  selectionMode = false,
+  isSelected = false,
+  onSelectionChange,
 }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -188,13 +197,39 @@ export default function ProjectCard({
     const statusConfig = STATUS_CONFIG[project.status] || STATUS_CONFIG['outline'];
     return (
       <div
-        className="group relative flex items-center gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-all duration-normal hover:bg-surface-hover hover:border-[var(--color-border-strong)] cursor-pointer"
+        className={cn(
+          "group relative flex items-center gap-4 rounded-lg border bg-card px-4 py-3 transition-all duration-normal cursor-pointer",
+          isSelected
+            ? "border-primary bg-primary/5"
+            : "border-border hover:bg-surface-hover hover:border-[var(--color-border-strong)]"
+        )}
         onClick={() => {
-          if (!renaming && !menuOpen) onOpen(project.id);
+          if (selectionMode && onSelectionChange) {
+            onSelectionChange(project.id, !isSelected);
+          } else if (!renaming && !menuOpen) {
+            onOpen(project.id);
+          }
         }}
       >
+        {/* Selection checkbox */}
+        {selectionMode && (
+          <button
+            className={cn(
+              "flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
+              isSelected
+                ? "bg-primary border-primary text-white"
+                : "border-border hover:border-primary"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectionChange?.(project.id, !isSelected);
+            }}
+          >
+            {isSelected && <Check className="h-3 w-3" />}
+          </button>
+        )}
         {/* Favorite button */}
-        {onToggleFavorite && (
+        {!selectionMode && onToggleFavorite && (
           <button
             className={cn(
               "p-1 rounded transition-all flex-shrink-0",
@@ -250,7 +285,7 @@ export default function ProjectCard({
             {relativeTime(project.updatedAt)}
           </span>
         </div>
-        {contextMenu}
+        {!selectionMode && contextMenu}
       </div>
     );
   }
@@ -260,11 +295,37 @@ export default function ProjectCard({
 
   return (
     <div
-      className="group relative flex flex-col gap-4 rounded-lg border border-border bg-card p-6 transition-all duration-normal hover:-translate-y-0.5 hover:shadow-ds-lg hover:border-[var(--color-border-strong)] cursor-pointer min-h-[280px]"
+      className={cn(
+        "group relative flex flex-col gap-4 rounded-lg border bg-card p-6 transition-all duration-normal cursor-pointer min-h-[280px]",
+        isSelected
+          ? "border-primary bg-primary/5"
+          : "border-border hover:-translate-y-0.5 hover:shadow-ds-lg hover:border-[var(--color-border-strong)]"
+      )}
       onClick={() => {
-        if (!renaming && !menuOpen) onOpen(project.id);
+        if (selectionMode && onSelectionChange) {
+          onSelectionChange(project.id, !isSelected);
+        } else if (!renaming && !menuOpen) {
+          onOpen(project.id);
+        }
       }}
     >
+      {/* Selection checkbox - top left corner */}
+      {selectionMode && (
+        <button
+          className={cn(
+            "absolute top-3 left-3 w-5 h-5 rounded border-2 flex items-center justify-center transition-all z-10",
+            isSelected
+              ? "bg-primary border-primary text-white"
+              : "border-border bg-background hover:border-primary"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectionChange?.(project.id, !isSelected);
+          }}
+        >
+          {isSelected && <Check className="h-3 w-3" />}
+        </button>
+      )}
       {/* Header: Icon + Title + Favorite + Menu */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -295,25 +356,27 @@ export default function ProjectCard({
         </div>
 
         {/* Favorite + Menu buttons */}
-        <div className="flex items-center gap-1">
-          {onToggleFavorite && (
-            <button
-              className={cn(
-                "p-1 rounded transition-all",
-                project.isFavorite
-                  ? "text-amber-500"
-                  : "text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-amber-500"
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFavorite(project.id);
-              }}
-            >
-              <Star className={cn("h-4 w-4", project.isFavorite && "fill-current")} />
-            </button>
-          )}
-          {contextMenu}
-        </div>
+        {!selectionMode && (
+          <div className="flex items-center gap-1">
+            {onToggleFavorite && (
+              <button
+                className={cn(
+                  "p-1 rounded transition-all",
+                  project.isFavorite
+                    ? "text-amber-500"
+                    : "text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-amber-500"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(project.id);
+                }}
+              >
+                <Star className={cn("h-4 w-4", project.isFavorite && "fill-current")} />
+              </button>
+            )}
+            {contextMenu}
+          </div>
+        )}
       </div>
 
       {/* Body */}
