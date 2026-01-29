@@ -13,7 +13,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { ProjectData, ProjectSummary } from '@/lib/store/types';
+import type { ProjectData, ProjectSummary, ProjectStatus } from '@/lib/store/types';
 import { parseFountain } from '@/lib/fountain/parser';
 
 // ---------------------------------------------------------------------------
@@ -40,6 +40,10 @@ function buildSummary(id: string, data: Record<string, unknown>): ProjectSummary
     createdAt: (data.createdAt as number) ?? Date.now(),
     pageCount: (data.pageCount as number) ?? 0,
     sceneCount: (data.sceneCount as number) ?? 0,
+    status: (data.status as ProjectStatus) ?? 'outline',
+    genre: (data.genre as string) ?? null,
+    isFavorite: (data.isFavorite as boolean) ?? false,
+    isArchived: (data.isArchived as boolean) ?? false,
   };
 }
 
@@ -74,6 +78,13 @@ export async function loadProject(
       name: data.name,
       content: data.content,
       voiceId: data.voiceId,
+      status: data.status ?? 'outline',
+      genre: data.genre ?? null,
+      logline: data.logline ?? null,
+      notes: data.notes ?? null,
+      targetLength: data.targetLength ?? null,
+      isFavorite: data.isFavorite ?? false,
+      isArchived: data.isArchived ?? false,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     };
@@ -100,6 +111,13 @@ export async function saveProject(
     name: data.name,
     content: data.content,
     voiceId: data.voiceId,
+    status: data.status ?? 'outline',
+    genre: data.genre ?? null,
+    logline: data.logline ?? null,
+    notes: data.notes ?? null,
+    targetLength: data.targetLength ?? null,
+    isFavorite: data.isFavorite ?? false,
+    isArchived: data.isArchived ?? false,
     pageCount,
     sceneCount,
     createdAt: data.createdAt,

@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 import { generateId } from '@/lib/utils';
-import type { ProjectData, ProjectSummary } from './types';
+import type { ProjectData, ProjectSummary, ProjectStatus } from './types';
 import {
   loadProjectIndex,
   loadProject,
@@ -27,6 +27,14 @@ import { useOutlineStore } from './outline';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Metadata for creating a new project */
+export interface ProjectMetadata {
+  genre?: string;
+  logline?: string;
+  notes?: string;
+  targetLength?: number;
+}
+
 export interface ProjectState {
   /** Display name of the current screenplay project. */
   name: string;
@@ -46,6 +54,27 @@ export interface ProjectState {
   /** Trust level preference per project. Default is 2 (Edit). */
   projectTrustLevels: Record<string, TrustLevel>;
 
+  /** Current project status. */
+  status: ProjectStatus;
+
+  /** Current project genre. */
+  genre: string | null;
+
+  /** Current project logline. */
+  logline: string | null;
+
+  /** Current project notes. */
+  notes: string | null;
+
+  /** Target page count for the screenplay. */
+  targetLength: number | null;
+
+  /** Whether the current project is a favorite. */
+  isFavorite: boolean;
+
+  /** Whether the current project is archived. */
+  isArchived: boolean;
+
   // -- Actions --------------------------------------------------------------
 
   /** Update the project name. */
@@ -61,11 +90,11 @@ export interface ProjectState {
   loadProjectList: () => Promise<void>;
 
   /**
-   * Create a new project with optional initial content.
+   * Create a new project with optional initial content and metadata.
    * Sets it as the active project and populates the editor.
    * Returns the new project ID.
    */
-  createProject: (name?: string, content?: string) => Promise<string>;
+  createProject: (name?: string, content?: string, metadata?: ProjectMetadata) => Promise<string>;
 
   /**
    * Open an existing project by ID.
@@ -100,6 +129,15 @@ export interface ProjectState {
 
   /** Get the trust level for a specific project. */
   getProjectTrustLevel: (projectId: string) => TrustLevel;
+
+  /** Toggle favorite status for a project. */
+  toggleFavorite: (id: string) => Promise<void>;
+
+  /** Toggle archive status for a project. */
+  toggleArchive: (id: string) => Promise<void>;
+
+  /** Update project metadata (status, genre, etc.). */
+  updateProjectMetadata: (id: string, updates: Partial<Pick<ProjectData, 'status' | 'genre' | 'logline' | 'notes' | 'targetLength'>>) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +211,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
   userId: null,
   projectTrustLevels: loadTrustLevels(),
+  status: 'outline',
+  genre: null,
+  logline: null,
+  notes: null,
+  targetLength: null,
+  isFavorite: false,
+  isArchived: false,
 
   // -- Actions --------------------------------------------------------------
 
@@ -201,7 +246,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ projects });
   },
 
-  createProject: async (name?: string, content?: string) => {
+  createProject: async (name?: string, content?: string, metadata?: ProjectMetadata) => {
     const { userId } = get();
     if (!userId) throw new Error('No authenticated user');
 
@@ -218,6 +263,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeProjectId: id,
       name: projectName,
       voiceId: 'default',
+      status: 'outline',
+      genre: metadata?.genre ?? null,
+      logline: metadata?.logline ?? null,
+      notes: metadata?.notes ?? null,
+      targetLength: metadata?.targetLength ?? null,
+      isFavorite: false,
+      isArchived: false,
     });
     persistActiveProjectId(id);
 
@@ -242,6 +294,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name: projectName,
       content: projectContent,
       voiceId: 'default',
+      status: 'outline',
+      genre: metadata?.genre ?? null,
+      logline: metadata?.logline ?? null,
+      notes: metadata?.notes ?? null,
+      targetLength: metadata?.targetLength ?? null,
+      isFavorite: false,
+      isArchived: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -272,6 +331,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeProjectId: id,
       name: data.name,
       voiceId: data.voiceId,
+      status: data.status ?? 'outline',
+      genre: data.genre ?? null,
+      logline: data.logline ?? null,
+      notes: data.notes ?? null,
+      targetLength: data.targetLength ?? null,
+      isFavorite: data.isFavorite ?? false,
+      isArchived: data.isArchived ?? false,
     });
     persistActiveProjectId(id);
 
@@ -312,7 +378,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   saveCurrentProject: async () => {
-    const { activeProjectId, name, voiceId, userId } = get();
+    const { activeProjectId, name, voiceId, userId, status, genre, logline, notes, targetLength, isFavorite, isArchived } = get();
     if (!activeProjectId || !userId) return;
 
     const { content } = useEditorStore.getState();
@@ -326,6 +392,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name,
       content,
       voiceId,
+      status,
+      genre,
+      logline,
+      notes,
+      targetLength,
+      isFavorite,
+      isArchived,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -458,5 +531,68 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Default to Ask (level 1) if not set, clamp old level 3 to level 2
     if (stored === undefined) return 1;
     return Math.min(stored, 2) as TrustLevel;
+  },
+
+  toggleFavorite: async (id: string) => {
+    const { userId } = get();
+    if (!userId) return;
+
+    const data = await loadProject(userId, id);
+    if (!data) return;
+
+    data.isFavorite = !data.isFavorite;
+    data.updatedAt = Date.now();
+    await saveProject(userId, data);
+
+    // Update local state if this is the active project.
+    if (get().activeProjectId === id) {
+      set({ isFavorite: data.isFavorite });
+    }
+
+    await get().loadProjectList();
+  },
+
+  toggleArchive: async (id: string) => {
+    const { userId } = get();
+    if (!userId) return;
+
+    const data = await loadProject(userId, id);
+    if (!data) return;
+
+    data.isArchived = !data.isArchived;
+    data.updatedAt = Date.now();
+    await saveProject(userId, data);
+
+    // Update local state if this is the active project.
+    if (get().activeProjectId === id) {
+      set({ isArchived: data.isArchived });
+    }
+
+    await get().loadProjectList();
+  },
+
+  updateProjectMetadata: async (id: string, updates: Partial<Pick<ProjectData, 'status' | 'genre' | 'logline' | 'notes' | 'targetLength'>>) => {
+    const { userId } = get();
+    if (!userId) return;
+
+    const data = await loadProject(userId, id);
+    if (!data) return;
+
+    Object.assign(data, updates);
+    data.updatedAt = Date.now();
+    await saveProject(userId, data);
+
+    // Update local state if this is the active project.
+    if (get().activeProjectId === id) {
+      set({
+        status: data.status,
+        genre: data.genre,
+        logline: data.logline,
+        notes: data.notes,
+        targetLength: data.targetLength,
+      });
+    }
+
+    await get().loadProjectList();
   },
 }));

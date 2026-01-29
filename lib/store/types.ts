@@ -5,6 +5,13 @@
 import type { AIMode } from './chat';
 
 // ---------------------------------------------------------------------------
+// Project status enum
+// ---------------------------------------------------------------------------
+
+/** Project development status */
+export type ProjectStatus = 'outline' | 'draft-1' | 'in-progress' | 'complete';
+
+// ---------------------------------------------------------------------------
 // Supported upload file types
 // ---------------------------------------------------------------------------
 
@@ -50,6 +57,27 @@ export interface ProjectData {
   /** ID of the active voice profile. */
   voiceId: string;
 
+  /** Project development status. */
+  status: ProjectStatus;
+
+  /** Genre classification (e.g., 'thriller', 'comedy'). */
+  genre: string | null;
+
+  /** One-sentence pitch/summary. */
+  logline: string | null;
+
+  /** Additional project notes. */
+  notes: string | null;
+
+  /** Target page count for the screenplay. */
+  targetLength: number | null;
+
+  /** Whether this project is marked as a favorite. */
+  isFavorite: boolean;
+
+  /** Whether this project has been archived. */
+  isArchived: boolean;
+
   /** @deprecated Chats now stored in IndexedDB. Retained for migration. */
   chatHistory?: SerializedChatMessage[];
 
@@ -77,4 +105,12 @@ export interface ProjectSummary {
   pageCount: number;
   /** Number of scenes (stored at save time for quick display). */
   sceneCount: number;
+  /** Project development status. */
+  status: ProjectStatus;
+  /** Genre classification. */
+  genre: string | null;
+  /** Whether this project is marked as a favorite. */
+  isFavorite: boolean;
+  /** Whether this project has been archived. */
+  isArchived: boolean;
 }

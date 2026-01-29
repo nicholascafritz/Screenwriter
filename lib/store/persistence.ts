@@ -90,6 +90,10 @@ function buildSummary(data: ProjectData): ProjectSummary {
     createdAt: data.createdAt,
     pageCount,
     sceneCount,
+    status: data.status ?? 'outline',
+    genre: data.genre ?? null,
+    isFavorite: data.isFavorite ?? false,
+    isArchived: data.isArchived ?? false,
   };
 }
 

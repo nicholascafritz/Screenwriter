@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { ProjectSummary } from '@/lib/store/types';
-import { Badge } from '@/components/ui/badge';
+import type { ProjectSummary, ProjectStatus } from '@/lib/store/types';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { FileText, MoreVertical, Pencil, Copy, Trash2 } from 'lucide-react';
+import { FileText, MoreVertical, Pencil, Copy, Trash2, Star, Archive, Film } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Relative time helper
@@ -25,6 +26,28 @@ function relativeTime(timestamp: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Status and genre configuration
+// ---------------------------------------------------------------------------
+
+const STATUS_CONFIG: Record<ProjectStatus, { label: string; variant: BadgeProps['variant'] }> = {
+  'outline': { label: 'Outline', variant: 'info' },
+  'draft-1': { label: 'Draft 1', variant: 'warning' },
+  'in-progress': { label: 'In Progress', variant: 'status' },
+  'complete': { label: 'Complete', variant: 'success' },
+};
+
+const GENRE_LABELS: Record<string, string> = {
+  'action': 'Action',
+  'comedy': 'Comedy',
+  'drama': 'Drama',
+  'horror': 'Horror',
+  'sci-fi': 'Sci-Fi',
+  'thriller': 'Thriller',
+  'romance': 'Romance',
+  'documentary': 'Documentary',
+};
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -34,6 +57,8 @@ interface ProjectCardProps {
   onRename: (id: string, newName: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  onToggleFavorite?: (id: string) => void;
+  onToggleArchive?: (id: string) => void;
   /** Render as a compact row for list view */
   compact?: boolean;
 }
@@ -48,6 +73,8 @@ export default function ProjectCard({
   onRename,
   onDuplicate,
   onDelete,
+  onToggleFavorite,
+  onToggleArchive,
   compact = false,
 }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -93,7 +120,7 @@ export default function ProjectCard({
   const contextMenu = (
     <div ref={menuRef} className="relative flex-shrink-0">
       <button
-        className="p-1 rounded hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="p-1 rounded hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={(e) => {
           e.stopPropagation();
           setMenuOpen((v) => !v);
@@ -105,7 +132,7 @@ export default function ProjectCard({
       {menuOpen && (
         <div className="absolute right-0 top-8 z-dropdown w-36 rounded-md border border-border bg-popover py-1 shadow-ds-lg">
           <button
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-white/5 text-left"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-secondary text-left"
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen(false);
@@ -117,7 +144,7 @@ export default function ProjectCard({
             Rename
           </button>
           <button
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-white/5 text-left"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-secondary text-left"
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen(false);
@@ -127,6 +154,19 @@ export default function ProjectCard({
             <Copy className="h-3.5 w-3.5" />
             Duplicate
           </button>
+          {onToggleArchive && (
+            <button
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-secondary text-left"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onToggleArchive(project.id);
+              }}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              {project.isArchived ? 'Unarchive' : 'Archive'}
+            </button>
+          )}
           <button
             className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-white/5 text-left text-danger"
             onClick={(e) => {
@@ -145,6 +185,7 @@ export default function ProjectCard({
 
   // ---- Compact (list) layout ----
   if (compact) {
+    const statusConfig = STATUS_CONFIG[project.status] || STATUS_CONFIG['outline'];
     return (
       <div
         className="group relative flex items-center gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-all duration-normal hover:bg-surface-hover hover:border-[var(--color-border-strong)] cursor-pointer"
@@ -152,6 +193,23 @@ export default function ProjectCard({
           if (!renaming && !menuOpen) onOpen(project.id);
         }}
       >
+        {/* Favorite button */}
+        {onToggleFavorite && (
+          <button
+            className={cn(
+              "p-1 rounded transition-all flex-shrink-0",
+              project.isFavorite
+                ? "text-amber-500"
+                : "text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-amber-500"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(project.id);
+            }}
+          >
+            <Star className={cn("h-4 w-4", project.isFavorite && "fill-current")} />
+          </button>
+        )}
         <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
           <FileText className="h-4 w-4 text-primary" />
         </div>
@@ -176,10 +234,18 @@ export default function ProjectCard({
             <span className="text-sm font-semibold text-foreground truncate block">{project.name}</span>
           )}
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-shrink-0">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
           <span>{project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}</span>
           <span>{project.sceneCount} {project.sceneCount === 1 ? 'scene' : 'scenes'}</span>
-          <Badge variant="status" className="text-[10px]">In Development</Badge>
+          <Badge variant={statusConfig.variant} className="text-[10px]">
+            {statusConfig.label}
+          </Badge>
+          {project.genre && (
+            <Badge variant="secondary" className="text-[10px]">
+              <Film className="h-2.5 w-2.5 mr-1" />
+              {GENRE_LABELS[project.genre] || project.genre}
+            </Badge>
+          )}
           <span className="text-[11px] text-[var(--color-text-tertiary)]">
             {relativeTime(project.updatedAt)}
           </span>
@@ -190,6 +256,8 @@ export default function ProjectCard({
   }
 
   // ---- Card (grid) layout ----
+  const statusConfig = STATUS_CONFIG[project.status] || STATUS_CONFIG['outline'];
+
   return (
     <div
       className="group relative flex flex-col gap-4 rounded-lg border border-border bg-card p-6 transition-all duration-normal hover:-translate-y-0.5 hover:shadow-ds-lg hover:border-[var(--color-border-strong)] cursor-pointer min-h-[280px]"
@@ -197,7 +265,7 @@ export default function ProjectCard({
         if (!renaming && !menuOpen) onOpen(project.id);
       }}
     >
-      {/* Header: Icon + Title + Menu */}
+      {/* Header: Icon + Title + Favorite + Menu */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10">
@@ -226,8 +294,26 @@ export default function ProjectCard({
           </div>
         </div>
 
-        {/* Menu button */}
-        {contextMenu}
+        {/* Favorite + Menu buttons */}
+        <div className="flex items-center gap-1">
+          {onToggleFavorite && (
+            <button
+              className={cn(
+                "p-1 rounded transition-all",
+                project.isFavorite
+                  ? "text-amber-500"
+                  : "text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-amber-500"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(project.id);
+              }}
+            >
+              <Star className={cn("h-4 w-4", project.isFavorite && "fill-current")} />
+            </button>
+          )}
+          {contextMenu}
+        </div>
       </div>
 
       {/* Body */}
@@ -254,7 +340,13 @@ export default function ProjectCard({
 
         {/* Badges */}
         <div className="flex gap-2 flex-wrap">
-          <Badge variant="status">In Development</Badge>
+          <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+          {project.genre && (
+            <Badge variant="secondary">
+              <Film className="h-3 w-3 mr-1" />
+              {GENRE_LABELS[project.genre] || project.genre}
+            </Badge>
+          )}
         </div>
       </div>
 

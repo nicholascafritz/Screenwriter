@@ -5,27 +5,27 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-sm px-3 py-1 text-xs font-medium leading-none whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium leading-none whitespace-nowrap transition-colors',
   {
     variants: {
       variant: {
         default:
-          'border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80',
+          'bg-primary/10 text-primary border border-primary/20',
         secondary:
-          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
+          'bg-secondary text-secondary-foreground border border-border',
         outline: 'text-foreground border border-border',
         destructive:
-          'border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80',
+          'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/20',
         status:
-          'bg-info-bg text-info border border-info/20',
+          'bg-[var(--color-info-bg)] text-[var(--color-info)] border border-[var(--color-info)]/20',
         success:
-          'bg-success-bg text-success border border-success/20',
+          'bg-[var(--color-success-bg)] text-[var(--color-success)] border border-[var(--color-success)]/20',
         warning:
-          'bg-warning-bg text-warning border border-warning/20',
+          'bg-[var(--color-warning-bg)] text-[var(--color-warning)] border border-[var(--color-warning)]/20',
         danger:
-          'bg-danger-bg text-danger border border-danger/20',
+          'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/20',
         info:
-          'bg-[rgba(100,116,139,0.2)] text-muted-foreground border border-border',
+          'bg-muted text-muted-foreground border border-border',
       },
     },
     defaultVariants: {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProjectStore } from '@/lib/store/project';
 import { SAMPLE_SCRIPT } from '@/lib/store/editor';
@@ -13,7 +13,42 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import NewProjectModal from '@/components/project/NewProjectModal';
 import { Button } from '@/components/ui/button';
-import { FilePlus, FileText, Upload, LayoutGrid, List } from 'lucide-react';
+import { Select } from '@/components/ui/select';
+import { FilePlus, FileText, Upload, LayoutGrid, List, Star, Archive, ArrowUpDown, Filter } from 'lucide-react';
+import type { ProjectMetadata } from '@/lib/store/project';
+import type { ProjectStatus } from '@/lib/store/types';
+import { cn } from '@/lib/utils';
+
+// Filter and sort options
+type FilterStatus = 'all' | ProjectStatus;
+type SortOption = 'updated' | 'created' | 'name' | 'pages';
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All Statuses' },
+  { value: 'outline', label: 'Outline' },
+  { value: 'draft-1', label: 'Draft 1' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'complete', label: 'Complete' },
+];
+
+const GENRE_OPTIONS = [
+  { value: '', label: 'All Genres' },
+  { value: 'action', label: 'Action' },
+  { value: 'comedy', label: 'Comedy' },
+  { value: 'drama', label: 'Drama' },
+  { value: 'horror', label: 'Horror' },
+  { value: 'sci-fi', label: 'Sci-Fi' },
+  { value: 'thriller', label: 'Thriller' },
+  { value: 'romance', label: 'Romance' },
+  { value: 'documentary', label: 'Documentary' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'updated', label: 'Last Updated' },
+  { value: 'created', label: 'Date Created' },
+  { value: 'name', label: 'Name' },
+  { value: 'pages', label: 'Page Count' },
+];
 
 export default function HomePage() {
   const router = useRouter();
@@ -21,23 +56,81 @@ export default function HomePage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Filter and sort state
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [filterGenre, setFilterGenre] = useState<string>('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('updated');
+  const [sortAsc, setSortAsc] = useState(false);
+
   const projects = useProjectStore((s) => s.projects);
+  const userId = useProjectStore((s) => s.userId);
   const createProject = useProjectStore((s) => s.createProject);
   const openProject = useProjectStore((s) => s.openProject);
   const renameProject = useProjectStore((s) => s.renameProject);
   const duplicateProject = useProjectStore((s) => s.duplicateProject);
   const removeProject = useProjectStore((s) => s.removeProject);
   const loadProjectList = useProjectStore((s) => s.loadProjectList);
+  const toggleFavorite = useProjectStore((s) => s.toggleFavorite);
+  const toggleArchive = useProjectStore((s) => s.toggleArchive);
 
-  // Load project list on mount.
+  // Filter and sort projects
+  const filteredProjects = useMemo(() => {
+    let result = projects;
+
+    // Filter by archive status
+    result = result.filter((p) => (showArchived ? p.isArchived : !p.isArchived));
+
+    // Filter by favorites
+    if (showFavoritesOnly) {
+      result = result.filter((p) => p.isFavorite);
+    }
+
+    // Filter by status
+    if (filterStatus !== 'all') {
+      result = result.filter((p) => p.status === filterStatus);
+    }
+
+    // Filter by genre
+    if (filterGenre) {
+      result = result.filter((p) => p.genre === filterGenre);
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      let cmp = 0;
+      switch (sortBy) {
+        case 'updated':
+          cmp = b.updatedAt - a.updatedAt;
+          break;
+        case 'created':
+          cmp = b.createdAt - a.createdAt;
+          break;
+        case 'name':
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case 'pages':
+          cmp = b.pageCount - a.pageCount;
+          break;
+      }
+      return sortAsc ? -cmp : cmp;
+    });
+
+    return result;
+  }, [projects, showArchived, showFavoritesOnly, filterStatus, filterGenre, sortBy, sortAsc]);
+
+  // Load project list when userId becomes available.
   useEffect(() => {
-    loadProjectList();
-  }, [loadProjectList]);
+    if (userId) {
+      loadProjectList();
+    }
+  }, [userId, loadProjectList]);
 
   // -- Handlers -------------------------------------------------------------
 
-  const handleNewProject = async (name?: string, content?: string) => {
-    await createProject(name, content);
+  const handleNewProject = async (name?: string, content?: string, metadata?: ProjectMetadata) => {
+    await createProject(name, content, metadata);
     // Navigation is handled by the NewProjectModal's choice step.
   };
 
@@ -93,6 +186,8 @@ export default function HomePage() {
   // -- Render ---------------------------------------------------------------
 
   const hasProjects = projects.length > 0;
+  const hasFilteredProjects = filteredProjects.length > 0;
+  const isFiltered = filterStatus !== 'all' || filterGenre !== '' || showFavoritesOnly || showArchived;
 
   return (
     <AuthGate>
@@ -156,15 +251,20 @@ export default function HomePage() {
           {hasProjects ? (
             <div className="w-full max-w-5xl">
               {/* Section header with view toggle */}
-              <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-foreground">
-                  Recent Projects
+                  {showArchived ? 'Archived Projects' : 'Recent Projects'}
+                  {isFiltered && (
+                    <span className="text-muted-foreground font-normal ml-2">
+                      ({filteredProjects.length} of {projects.length})
+                    </span>
+                  )}
                 </h2>
-                <div className="flex items-center rounded-md border border-border p-0.5">
+                <div className="flex items-center rounded-md border border-border p-0.5 bg-secondary">
                   <button
                     className={`p-1.5 rounded transition-colors ${
                       viewMode === 'grid'
-                        ? 'bg-white/10 text-foreground'
+                        ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                     onClick={() => setViewMode('grid')}
@@ -175,7 +275,7 @@ export default function HomePage() {
                   <button
                     className={`p-1.5 rounded transition-colors ${
                       viewMode === 'list'
-                        ? 'bg-white/10 text-foreground'
+                        ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                     onClick={() => setViewMode('list')}
@@ -186,32 +286,125 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {projects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onOpen={handleOpenProject}
-                      onRename={renameProject}
-                      onDuplicate={duplicateProject}
-                      onDelete={removeProject}
-                    />
-                  ))}
+              {/* Filter bar */}
+              <div className="flex items-center gap-3 mb-5 flex-wrap">
+                {/* Status filter */}
+                <div className="flex items-center gap-1.5">
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Select
+                    options={STATUS_OPTIONS}
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+                    className="h-8 text-xs min-w-[120px]"
+                  />
                 </div>
+
+                {/* Genre filter */}
+                <Select
+                  options={GENRE_OPTIONS}
+                  value={filterGenre}
+                  onChange={(e) => setFilterGenre(e.target.value)}
+                  className="h-8 text-xs min-w-[120px]"
+                />
+
+                {/* Favorites toggle */}
+                <button
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors border',
+                    showFavoritesOnly
+                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                      : 'text-muted-foreground border-border hover:text-foreground hover:border-foreground/30'
+                  )}
+                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                >
+                  <Star className={cn('h-3.5 w-3.5', showFavoritesOnly && 'fill-current')} />
+                  Favorites
+                </button>
+
+                {/* Archive toggle */}
+                <button
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors border',
+                    showArchived
+                      ? 'bg-muted text-foreground border-foreground/30'
+                      : 'text-muted-foreground border-border hover:text-foreground hover:border-foreground/30'
+                  )}
+                  onClick={() => setShowArchived(!showArchived)}
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  {showArchived ? 'Archived' : 'Show Archived'}
+                </button>
+
+                {/* Sort dropdown */}
+                <div className="ml-auto flex items-center gap-2">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Select
+                    options={SORT_OPTIONS}
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="h-8 text-xs min-w-[120px]"
+                  />
+                  <button
+                    className="p-1.5 rounded border border-border hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setSortAsc(!sortAsc)}
+                    title={sortAsc ? 'Ascending' : 'Descending'}
+                  >
+                    <ArrowUpDown className={cn('h-3.5 w-3.5', sortAsc && 'rotate-180')} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Project list */}
+              {hasFilteredProjects ? (
+                viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredProjects.map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onOpen={handleOpenProject}
+                        onRename={renameProject}
+                        onDuplicate={duplicateProject}
+                        onDelete={removeProject}
+                        onToggleFavorite={toggleFavorite}
+                        onToggleArchive={toggleArchive}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {filteredProjects.map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onOpen={handleOpenProject}
+                        onRename={renameProject}
+                        onDuplicate={duplicateProject}
+                        onDelete={removeProject}
+                        onToggleFavorite={toggleFavorite}
+                        onToggleArchive={toggleArchive}
+                        compact
+                      />
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="flex flex-col gap-2">
-                  {projects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onOpen={handleOpenProject}
-                      onRename={renameProject}
-                      onDuplicate={duplicateProject}
-                      onDelete={removeProject}
-                      compact
-                    />
-                  ))}
+                <div className="flex flex-col items-center gap-4 py-12 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No projects match your filters.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFilterStatus('all');
+                      setFilterGenre('');
+                      setShowFavoritesOnly(false);
+                      setShowArchived(false);
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
                 </div>
               )}
             </div>

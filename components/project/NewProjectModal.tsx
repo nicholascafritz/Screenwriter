@@ -8,11 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { X, Plus, Sparkles, PenLine } from 'lucide-react';
+import type { ProjectMetadata } from '@/lib/store/project';
 
 interface NewProjectModalProps {
   open: boolean;
   onClose: () => void;
-  onCreate: (name: string, content?: string) => Promise<void>;
+  onCreate: (name: string, content?: string, metadata?: ProjectMetadata) => Promise<void>;
 }
 
 const GENRE_OPTIONS = [
@@ -66,10 +67,15 @@ export default function NewProjectModal({ open, onClose, onCreate }: NewProjectM
       parts.push('');
     }
 
-    await onCreate(name, parts.join('\n'));
+    await onCreate(name, parts.join('\n'), {
+      genre: genre || undefined,
+      logline: logline || undefined,
+      notes: notes || undefined,
+      targetLength,
+    });
     setIsCreating(false);
     setStep('choice');
-  }, [title, logline, notes, genre, onCreate]);
+  }, [title, logline, notes, genre, targetLength, onCreate]);
 
   const handleGuide = useCallback(() => {
     // Store guide context in sessionStorage so the guide page can read it.
@@ -122,7 +128,7 @@ export default function NewProjectModal({ open, onClose, onCreate }: NewProjectM
               <h2 className="text-xl font-semibold text-foreground">Create New Project</h2>
               <button
                 onClick={handleClose}
-                className="p-1 rounded-md hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -189,7 +195,7 @@ export default function NewProjectModal({ open, onClose, onCreate }: NewProjectM
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-black/10">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-secondary/50">
               <Button variant="ghost" onClick={handleClose}>
                 Cancel
               </Button>
@@ -211,7 +217,7 @@ export default function NewProjectModal({ open, onClose, onCreate }: NewProjectM
               <h2 className="text-xl font-semibold text-foreground">How do you want to start?</h2>
               <button
                 onClick={handleClose}
-                className="p-1 rounded-md hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
