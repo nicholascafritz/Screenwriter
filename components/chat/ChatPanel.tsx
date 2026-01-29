@@ -257,10 +257,13 @@ export default function ChatPanel({ className }: ChatPanelProps) {
       screenplay: content,
       cursorScene: currentScene ?? undefined,
       selection: selection ?? undefined,
-      history: useChatStore.getState().messages.slice(0, -1).map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      // Filter out messages with empty content and system messages (which aren't supported by Claude)
+      history: useChatStore.getState().messages.slice(0, -1)
+        .filter((m) => m.content.trim() && m.role !== 'system')
+        .map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
     };
 
     // Abort any previous in-flight request.
