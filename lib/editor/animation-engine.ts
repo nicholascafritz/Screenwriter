@@ -96,6 +96,23 @@ class EditAnimationEngine {
     const { editorHandle, edit } = ctx;
     const state = useLiveEditStore.getState();
 
+    // ALWAYS apply instantly to avoid text corruption from character-by-character animation.
+    // The animation was causing broken/garbled text due to:
+    // 1. Stale hunk positions after previous edits shifted the document
+    // 2. Character-level diffs splitting words incorrectly
+    // 3. Column tracking issues during incremental insertion
+    //
+    // The fullContent contains the correct final state, so we always use that.
+    this.applyInstantly(ctx);
+    return;
+
+    // NOTE: The code below is kept for reference but is disabled to prevent corruption.
+    // If animation is needed in the future, it must be rewritten to:
+    // - Apply the full content first, then animate visually (not structurally)
+    // - Or use line-based (not character-based) animation
+    // - Or recalculate hunk positions after each edit
+
+    /*
     // Check if instant mode or skip requested
     if (state.animationSpeed === 'instant' || state.skipRequested) {
       this.applyInstantly(ctx);
@@ -161,6 +178,7 @@ class EditAnimationEngine {
     editorHandle.highlightLines(edit.startLine, edit.endLine);
 
     ctx.onComplete();
+    */
   }
 
   private async animateHunk(
