@@ -85,7 +85,6 @@ export default function ChatPanel({ className }: ChatPanelProps) {
   const voiceId = useProjectStore((s) => s.voiceId);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
 
-  const todos = useAgentTodoStore((s) => s.todos);
   const todosVisible = useAgentTodoStore((s) => s.isVisible);
   const awaitingApproval = useAgentTodoStore((s) => s.awaitingApproval);
   const approvePlan = useAgentTodoStore((s) => s.approvePlan);
@@ -351,9 +350,9 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
               // Handle todo_write tool calls - update the todo store.
               if (parsed.type === 'tool_call' && parsed.name === 'todo_write') {
-                const todos = parsed.input?.todos as AgentTodo[] | undefined;
-                if (todos && Array.isArray(todos)) {
-                  useAgentTodoStore.getState().setTodos(todos);
+                const newTodos = parsed.input?.todos as AgentTodo[] | undefined;
+                if (newTodos && Array.isArray(newTodos)) {
+                  useAgentTodoStore.getState().setTodos(newTodos);
                 }
               }
 
