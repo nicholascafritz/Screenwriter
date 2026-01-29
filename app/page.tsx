@@ -459,7 +459,7 @@ export default function HomePage() {
                     className="h-8 text-xs min-w-[120px]"
                   />
                   <button
-                    className="p-1.5 rounded border border-border hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+                    className="p-1.5 rounded border border-border hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => setSortAsc(!sortAsc)}
                     title={sortAsc ? 'Ascending' : 'Descending'}
                   >

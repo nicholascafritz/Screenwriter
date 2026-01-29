@@ -94,7 +94,7 @@ export default function ModeSelector({ className }: ModeSelectorProps) {
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
                   ? 'shadow-sm'
-                  : 'text-muted-foreground hover:bg-white/5 hover:text-foreground',
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
               )}
               style={
                 isActive

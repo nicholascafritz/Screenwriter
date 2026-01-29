@@ -45,7 +45,7 @@ const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
             <div
               className="absolute inset-0"
               style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
                 animation: 'shimmer 2s infinite',
               }}
             />

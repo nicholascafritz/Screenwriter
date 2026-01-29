@@ -63,7 +63,7 @@ export default function ScreenplayPreview({ className }: ScreenplayPreviewProps)
 
   return (
     <ScrollArea
-      className={cn('h-full w-full bg-neutral-900', className)}
+      className={cn('h-full w-full bg-neutral-100', className)}
     >
       <div className="mx-auto flex flex-col items-center gap-8 py-8">
         {/* ---- Title page ---- */}
@@ -82,17 +82,17 @@ export default function ScreenplayPreview({ className }: ScreenplayPreviewProps)
                 <p className="mb-8 text-base">{screenplay.titlePage.author}</p>
               )}
               {screenplay.titlePage['draft date'] && (
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-neutral-500">
                   {screenplay.titlePage['draft date']}
                 </p>
               )}
               {screenplay.titlePage.contact && (
-                <p className="mt-auto text-xs text-neutral-400">
+                <p className="mt-auto text-xs text-neutral-500">
                   {screenplay.titlePage.contact}
                 </p>
               )}
               {screenplay.titlePage.source && (
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-neutral-500">
                   {screenplay.titlePage.source}
                 </p>
               )}
@@ -126,14 +126,14 @@ export default function ScreenplayPreview({ className }: ScreenplayPreviewProps)
           width: 8.5in;
           min-height: 11in;
           padding: 1in 1in 1in 1.5in;
-          background: #1e1e2e;
-          border: 1px solid #2d2d52;
+          background: #ffffff;
+          border: 1px solid #e5e5e5;
           border-radius: 2px;
           font-family: 'Courier Prime', 'Courier New', monospace;
           font-size: 12pt;
           line-height: 1.0;
-          color: #e2e8f0;
-          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+          color: #262626;
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
           position: relative;
           overflow: hidden;
         }
@@ -159,7 +159,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'scene_heading':
       return (
         <div className="mb-2 mt-4 first:mt-0">
-          <p className="text-sm font-bold uppercase tracking-wide text-[#4ade80]">
+          <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-scene-heading)]">
             {element.text}
           </p>
         </div>
@@ -169,7 +169,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
       return (
         <div className="my-1">
           {element.text.split('\n').map((line, i) => (
-            <p key={i} className="whitespace-pre-wrap text-sm text-[#94a3b8]">
+            <p key={i} className="whitespace-pre-wrap text-sm text-[var(--color-action)]">
               {renderInlineMarkup(line)}
             </p>
           ))}
@@ -179,7 +179,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'character':
       return (
         <div className="mb-0 mt-3 first:mt-0">
-          <p className="text-center text-sm font-bold uppercase text-[#60a5fa]">
+          <p className="text-center text-sm font-bold uppercase text-[var(--color-character)]">
             {element.text}
           </p>
         </div>
@@ -189,7 +189,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
       return (
         <div className="mx-auto mb-1" style={{ maxWidth: '35ch' }}>
           {element.text.split('\n').map((line, i) => (
-            <p key={i} className="text-center text-sm text-[#e2e8f0]">
+            <p key={i} className="text-center text-sm text-[var(--color-dialogue)]">
               {renderInlineMarkup(line)}
             </p>
           ))}
@@ -199,7 +199,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'parenthetical':
       return (
         <div className="mx-auto mb-0.5" style={{ maxWidth: '30ch' }}>
-          <p className="text-center text-sm italic text-[#fbbf24]">
+          <p className="text-center text-sm italic text-[var(--color-parenthetical)]">
             {element.text}
           </p>
         </div>
@@ -208,7 +208,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'transition':
       return (
         <div className="my-2">
-          <p className="text-right text-sm font-bold uppercase text-[#c084fc]">
+          <p className="text-right text-sm font-bold uppercase text-[var(--color-transition)]">
             {element.text}
           </p>
         </div>
@@ -217,7 +217,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'centered':
       return (
         <div className="my-1">
-          <p className="text-center text-sm text-[#22d3ee]">
+          <p className="text-center text-sm text-[var(--color-info)]">
             {renderInlineMarkup(element.text)}
           </p>
         </div>
@@ -225,14 +225,14 @@ function PreviewElement({ element }: { element: ScriptElement }) {
 
     case 'page_break':
       return (
-        <hr className="my-4 border-t border-neutral-600" />
+        <hr className="my-4 border-t border-border" />
       );
 
     case 'section':
       return (
         <div className="mb-1 mt-3 first:mt-0">
           <p
-            className="text-sm font-bold text-[#fb923c]"
+            className="text-sm font-bold text-[var(--color-warning)]"
             style={{ fontSize: sectionFontSize(element.depth) }}
           >
             {element.text}
@@ -243,7 +243,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'synopsis':
       return (
         <div className="my-0.5">
-          <p className="text-xs italic text-[#2dd4bf]">
+          <p className="text-xs italic text-[var(--color-success)]">
             {element.text}
           </p>
         </div>
@@ -252,7 +252,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'lyric':
       return (
         <div className="my-0.5">
-          <p className="text-center text-sm italic text-[#f472b6]">
+          <p className="text-center text-sm italic text-pink-600">
             {element.text}
           </p>
         </div>
@@ -261,7 +261,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     case 'note':
       return (
         <div className="my-0.5">
-          <p className="text-xs italic text-[#64748b]">
+          <p className="text-xs italic text-[var(--color-note)]">
             [{element.text}]
           </p>
         </div>
@@ -283,7 +283,7 @@ function PreviewElement({ element }: { element: ScriptElement }) {
     default:
       return (
         <div className="my-0.5">
-          <p className="text-sm text-[#94a3b8]">{element.text}</p>
+          <p className="text-sm text-[var(--color-action)]">{element.text}</p>
         </div>
       );
   }

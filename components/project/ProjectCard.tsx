@@ -177,7 +177,7 @@ export default function ProjectCard({
             </button>
           )}
           <button
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-white/5 text-left text-danger"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-[var(--color-danger-bg)] text-left text-danger"
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen(false);
