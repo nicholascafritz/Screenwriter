@@ -363,8 +363,223 @@ export const TRIPOD_EXAMPLES: TripodMovieExample[] = [
         "text": "Holding the edge, Jack assures Rose she will die an old woman, warm in her bed."
       }
     }
+  },
+  // Additional reference films for genre diversity
+  {
+    "movie": "Get Out",
+    "totalSentences": 35,
+    "genre": "Horror",
+    "turningPoints": {
+      "tp1": {
+        "index": 3,
+        "pct": 0.086,
+        "text": "Chris arrives at Rose's family estate and meets her parents, who seem overly accommodating."
+      },
+      "tp2": {
+        "index": 9,
+        "pct": 0.257,
+        "text": "At the garden party, Chris notices the strange behavior of the Black servants and guests."
+      },
+      "tp3": {
+        "index": 17,
+        "pct": 0.486,
+        "text": "Chris discovers photos revealing Rose has brought many Black partners home before."
+      },
+      "tp4": {
+        "index": 26,
+        "pct": 0.743,
+        "text": "Chris is strapped to a chair as the Armitage family reveals the Coagula procedure."
+      },
+      "tp5": {
+        "index": 32,
+        "pct": 0.914,
+        "text": "Chris escapes, killing the family members, and is rescued by Rod."
+      }
+    }
+  },
+  {
+    "movie": "Bridesmaids",
+    "totalSentences": 40,
+    "genre": "Comedy",
+    "turningPoints": {
+      "tp1": {
+        "index": 4,
+        "pct": 0.10,
+        "text": "Lillian announces her engagement, asking Annie to be her maid of honor."
+      },
+      "tp2": {
+        "index": 10,
+        "pct": 0.25,
+        "text": "Annie meets Helen and the bridal party, beginning her journey as maid of honor."
+      },
+      "tp3": {
+        "index": 20,
+        "pct": 0.50,
+        "text": "Annie's disastrous bridal shower speech and the food poisoning incident at the dress shop."
+      },
+      "tp4": {
+        "index": 31,
+        "pct": 0.775,
+        "text": "Annie is kicked out of the wedding party after destroying the bridal shower."
+      },
+      "tp5": {
+        "index": 37,
+        "pct": 0.925,
+        "text": "Annie finds Lillian and reconciles, saving the wedding day."
+      }
+    }
+  },
+  {
+    "movie": "Mad Max: Fury Road",
+    "totalSentences": 32,
+    "genre": "Action",
+    "turningPoints": {
+      "tp1": {
+        "index": 3,
+        "pct": 0.094,
+        "text": "Max is captured by the War Boys and used as a blood bag for Nux."
+      },
+      "tp2": {
+        "index": 7,
+        "pct": 0.219,
+        "text": "Max reluctantly joins Furiosa and the Wives in their escape to the Green Place."
+      },
+      "tp3": {
+        "index": 16,
+        "pct": 0.50,
+        "text": "They reach the canyon and successfully evade the pursuing war parties."
+      },
+      "tp4": {
+        "index": 24,
+        "pct": 0.75,
+        "text": "They discover the Green Place no longer exists — the Vuvalini's homeland is now toxic swampland."
+      },
+      "tp5": {
+        "index": 29,
+        "pct": 0.906,
+        "text": "Max and Furiosa defeat Immortan Joe and return to the Citadel to liberate its people."
+      }
+    }
+  },
+  {
+    "movie": "Arrival",
+    "totalSentences": 38,
+    "genre": "Science Fiction",
+    "turningPoints": {
+      "tp1": {
+        "index": 4,
+        "pct": 0.105,
+        "text": "Twelve alien spacecraft arrive on Earth; Louise is recruited to communicate with them."
+      },
+      "tp2": {
+        "index": 11,
+        "pct": 0.289,
+        "text": "Louise enters the spacecraft and begins attempting to communicate with the heptapods."
+      },
+      "tp3": {
+        "index": 19,
+        "pct": 0.50,
+        "text": "Louise realizes the aliens' language affects perception of time."
+      },
+      "tp4": {
+        "index": 29,
+        "pct": 0.763,
+        "text": "China threatens military action; the aliens offer a mysterious 'weapon.'"
+      },
+      "tp5": {
+        "index": 35,
+        "pct": 0.921,
+        "text": "Louise uses her new perception of time to prevent war, understanding the gift and its personal cost."
+      }
+    }
+  },
+  {
+    "movie": "Manchester by the Sea",
+    "totalSentences": 42,
+    "genre": "Drama",
+    "turningPoints": {
+      "tp1": {
+        "index": 5,
+        "pct": 0.119,
+        "text": "Lee learns his brother Joe has died, leaving him as guardian of teenage nephew Patrick."
+      },
+      "tp2": {
+        "index": 12,
+        "pct": 0.286,
+        "text": "Lee reluctantly moves back to Manchester to care for Patrick."
+      },
+      "tp3": {
+        "index": 22,
+        "pct": 0.524,
+        "text": "Flashback reveals Lee accidentally caused the fire that killed his children."
+      },
+      "tp4": {
+        "index": 33,
+        "pct": 0.786,
+        "text": "Lee encounters his ex-wife Randi, who has remarried; she apologizes for what she said."
+      },
+      "tp5": {
+        "index": 39,
+        "pct": 0.929,
+        "text": "Lee admits he 'can't beat it' and arranges for Patrick to live with family friend George."
+      }
+    }
   }
 ] as TripodMovieExample[];
+
+// ---------------------------------------------------------------------------
+// Successful Structural Violations
+// ---------------------------------------------------------------------------
+
+export interface StructuralViolation {
+  /** Film title. */
+  movie: string;
+  /** Description of the structural rule that was broken. */
+  violation: string;
+  /** Why the violation works for this particular film. */
+  whyItWorks: string;
+  /** Genre of the film. */
+  genre: string;
+}
+
+export const SUCCESSFUL_VIOLATIONS: StructuralViolation[] = [
+  {
+    movie: 'Memento',
+    violation: 'Reverse chronological structure — scenes play in reverse order',
+    whyItWorks: 'The structural gimmick IS the theme — memory and identity fragmentation. The audience experiences Leonard\'s confusion firsthand. Each "revelation" recontextualizes what we\'ve already seen.',
+    genre: 'Thriller',
+  },
+  {
+    movie: 'Pulp Fiction',
+    violation: 'Non-linear anthology structure; protagonist dies mid-film but reappears later',
+    whyItWorks: 'Each segment has its own complete arc. The out-of-order presentation creates thematic resonance and surprise. The final scene gains power because we know Vincent\'s fate.',
+    genre: 'Crime',
+  },
+  {
+    movie: 'No Country for Old Men',
+    violation: 'Protagonist killed off-screen before climax; no traditional resolution',
+    whyItWorks: 'The absence of catharsis IS the point — the world doesn\'t provide neat endings. Chigurh represents unstoppable chaos. Sheriff Bell\'s closing monologue replaces action climax with thematic conclusion.',
+    genre: 'Thriller',
+  },
+  {
+    movie: 'The Shining',
+    violation: 'Extremely slow build with late catalyst; minimal traditional plot progression',
+    whyItWorks: 'Dread builds through accumulation rather than events. The slow pace mirrors the isolation that drives Jack\'s madness. The hotel itself becomes the antagonist.',
+    genre: 'Horror',
+  },
+  {
+    movie: 'Boyhood',
+    violation: 'No central dramatic question; episodic structure over 12 years',
+    whyItWorks: 'The passage of time itself becomes the story. Small moments accumulate meaning through perspective. The lack of conventional drama makes the ordinary feel profound.',
+    genre: 'Drama',
+  },
+  {
+    movie: '500 Days of Summer',
+    violation: 'Non-linear timeline with numbered days; spoils the ending upfront',
+    whyItWorks: 'Knowing the relationship fails shifts focus from "will they?" to "why didn\'t they?" The structure mirrors how we replay memories of failed relationships.',
+    genre: 'Romantic Comedy',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Save the Cat Beat → TRIPOD Turning Point Mapping

@@ -15,8 +15,9 @@
 
 import type { VoiceProfile } from './voices';
 import { buildVoicePrompt } from './voices';
-import { buildVoiceSamplesPrompt } from './voice-samples';
-import { buildModeExamples, buildToolPatterns } from './examples';
+import { buildVoiceSamplesPrompt, buildTransformationSamplesPrompt } from './voice-samples';
+import { buildModeExamples, buildToolPatterns, buildNegativeExamples } from './examples';
+import { buildAllAnalysisRubricsPrompt } from './analysis-rubrics';
 import { parseFountain } from '@/lib/fountain/parser';
 import { detectStructure } from '@/lib/fountain/structure';
 import { useCommentStore } from '@/lib/store/comments';
@@ -79,10 +80,17 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
   sections.push(buildStructuralKnowledgeSection());
   sections.push(buildVoicePrompt(params.voice));
   sections.push(buildVoiceSamplesPrompt(params.voice.id));
+  sections.push(buildTransformationSamplesPrompt(params.voice.id));
   sections.push(buildModeInstructions(params.mode));
   sections.push(buildModeTransitionSection(params.mode));
   sections.push(buildModeExamples(params.mode));
   sections.push(buildToolPatterns(params.mode));
+  sections.push(buildNegativeExamples(params.mode));
+
+  // Add analysis rubrics for writers-room mode
+  if (params.mode === 'writers-room') {
+    sections.push(buildAllAnalysisRubricsPrompt());
+  }
 
   // Tiered context: Macro summary (Tier 1 - always present)
   sections.push(buildMacroSummarySection(params));

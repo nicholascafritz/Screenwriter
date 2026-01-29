@@ -83,6 +83,15 @@ I know we're in the middle of something. That's exactly my point. Even in the mi
 
 Jules stares at him. Vincent shrugs. It's gonna be a long night.`,
     },
+    {
+      aspect: 'scene-description',
+      label: 'Location as character — place has personality and history',
+      fountain: `INT. JACK RABBIT SLIM'S - NIGHT
+
+A 1950s themed restaurant that's trying too hard and knows it. Waiters dressed as Buddy Holly and Marilyn Monroe. The booths are shaped like Cadillacs. Everything is chrome and neon and deeply, profoundly fake in a way that somehow circles back to authentic.
+
+VINCENT and MIA take a booth. He notices the $5 shake on the menu. She notices him noticing.`,
+    },
   ],
 
   'prestige-drama': [
@@ -113,6 +122,15 @@ Your timeline had silence.`,
       fountain: `The newsroom hums with the particular electricity of a story about to break -- keyboards clatter in staccato bursts, phones ring unanswered, and somewhere a printer jams and nobody cares.
 
 Catherine stands at the glass wall of her office, watching it all happen without her.`,
+    },
+    {
+      aspect: 'scene-description',
+      label: 'Environment reflects institutional power and personal cost',
+      fountain: `INT. WASHINGTON POST - NEWSROOM - NIGHT
+
+Fluorescent purgatory. Fifty desks, forty-seven empty. The three that aren't belong to people who've forgotten what their apartments look like.
+
+CATHERINE MERCER, 40s, stands at the window of her glass office, watching the cleaning crew vacuum around the reporters who won't go home. She hasn't been home in three days. Neither have they.`,
     },
   ],
 
@@ -223,8 +241,142 @@ He grabs a yogurt. Puts it back. Grabs a different yogurt. Checks the label. Put
 
 He closes the fridge and eats cereal out of the box.`,
     },
+    {
+      aspect: 'scene-description',
+      label: 'Location setup that\'s already telling jokes',
+      fountain: `INT. NORA'S APARTMENT - KITCHEN - MORNING
+
+A kitchen that belongs in a magazine spread titled "How Type-A Personalities Live." Every spice alphabetized. Labels on the labels. A whiteboard with a meal prep schedule color-coded by macronutrient.
+
+On the counter: a single unwashed mug. NORA stares at it like it's evidence of moral failure.`,
+    },
   ],
 };
+
+// ---------------------------------------------------------------------------
+// Transformation Samples (Before/After)
+// ---------------------------------------------------------------------------
+
+interface TransformationSample {
+  /** Which voice this transformation demonstrates. */
+  voice: string;
+  /** Which craft aspect this sample demonstrates. */
+  aspect: 'dialogue' | 'action';
+  /** A brief label for the transformation. */
+  label: string;
+  /** The generic/flat version. */
+  before: string;
+  /** The voice-specific version. */
+  after: string;
+  /** What changed and why. */
+  notes: string;
+}
+
+const TRANSFORMATION_SAMPLES: TransformationSample[] = [
+  {
+    voice: 'classic-hollywood',
+    aspect: 'dialogue',
+    label: 'On-the-nose → Subtext',
+    before: `FRANK
+I'm angry that you lied to me about the money.
+
+HELEN
+I was scared you would leave me if you knew the truth.`,
+    after: `FRANK
+The accountant called. Third time this week.
+
+HELEN
+I was going to tell you.
+
+FRANK
+When? Before or after the mortgage company?`,
+    notes: 'Removed emotional declarations. Let the situation carry the weight. Characters talk about the problem, not their feelings about the problem.',
+  },
+  {
+    voice: 'horror-thriller',
+    aspect: 'action',
+    label: 'Neutral → Dread-infused',
+    before: `Mari walks down the hallway. She sees a door at the end. She opens it and looks inside.`,
+    after: `The hallway stretches. Mari counts the doors — four, five, six — but there should only be five.
+
+The sixth door is new. Or it was always there and she never noticed.
+
+She reaches for the handle. Her hand stops an inch away.
+
+The metal is warm.`,
+    notes: 'Added sensory wrongness, hesitation beats, and detail that implies threat without naming it. Dread comes from noticing what shouldn\'t be.',
+  },
+  {
+    voice: 'comedy',
+    aspect: 'dialogue',
+    label: 'Functional → Character-driven humor',
+    before: `NORA
+I'm very organized.
+
+BEN
+I noticed.`,
+    after: `NORA
+I have a system. I label everything. Color-coded. There's a spreadsheet.
+
+BEN
+You have a spreadsheet for your refrigerator?
+
+NORA
+I have a spreadsheet for my spreadsheets, Ben. Try to keep up.`,
+    notes: 'Escalation creates comedy. Each line raises the stakes of her organizational obsession. Ben\'s straight-man reaction grounds the absurdity.',
+  },
+  {
+    voice: 'prestige-drama',
+    aspect: 'dialogue',
+    label: 'Simple conflict → Rhetorical sparring',
+    before: `CATHERINE
+You shared the confidential document.
+
+DANIEL
+I thought people should know.`,
+    after: `CATHERINE
+You leaked the memo.
+
+DANIEL
+I circulated the memo. There's a difference.
+
+CATHERINE
+The difference is about six federal statutes, Daniel.
+
+DANIEL
+The difference is that three hundred thousand people now know what their government is doing with their money.`,
+    notes: 'Each line is a parry and thrust. Characters don\'t just state positions — they argue semantics, weaponize word choice, and score points.',
+  },
+  {
+    voice: 'auteur-dialogue',
+    aspect: 'dialogue',
+    label: 'Direct → Digressive with texture',
+    before: `VINCENT
+This country has problems.
+
+JULES
+We need to focus.`,
+    after: `VINCENT
+You know what the problem with this country is? It's not the politicians, it's not the banks -- it's the fact that nobody remembers what a good sandwich tastes like anymore.
+
+JULES
+We're in the middle of something here, Vincent.
+
+VINCENT
+I know we're in the middle of something. That's exactly my point.`,
+    notes: 'The tangent IS the character. Vincent\'s sandwich rant reveals his worldview while Jules\'s impatience reveals his. The digression creates contrast and rhythm.',
+  },
+  {
+    voice: 'nicks-voice',
+    aspect: 'action',
+    label: 'Ordinary → Uncanny precision',
+    before: `A man sits in a diner eating breakfast. He watches a dog outside.`,
+    after: `The diner is empty except for a man in a booth by the window. He's eating pancakes with a knife and fork, cutting each one into exactly six pieces. There's a system to it. There's a system to everything he does.
+
+Outside, a dog crosses the parking lot in no particular hurry. The man watches it. The pancakes go cold. He doesn't seem to mind.`,
+    notes: 'Wrong details get focus. The precision of "exactly six pieces" and "no particular hurry" creates unease. The cold pancakes suggest obsession or detachment.',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Prompt Builder
@@ -234,12 +386,31 @@ He closes the fridge and eats cereal out of the box.`,
  * Build a system-prompt section containing concrete Fountain excerpts
  * for the given voice profile.
  *
+ * Includes both preset samples and user-contributed samples (up to 3).
+ *
  * Returns an empty string if the voiceId has no registered samples,
  * which the `filter(Boolean)` in `buildSystemPrompt` will silently skip.
  */
 export function buildVoiceSamplesPrompt(voiceId: string): string {
-  const samples = VOICE_SAMPLES[voiceId];
-  if (!samples || samples.length === 0) return '';
+  const presetSamples = VOICE_SAMPLES[voiceId] || [];
+
+  // Try to get user-contributed samples if the store is available
+  let userSamples: VoiceSample[] = [];
+  try {
+    // Dynamic import to avoid circular dependencies and SSR issues
+    const { getUserVoiceSamplesForPrompt } = require('@/lib/store/training-feedback');
+    const rawUserSamples = getUserVoiceSamplesForPrompt(voiceId, 3);
+    userSamples = rawUserSamples.map((s: { aspect: 'dialogue' | 'action' | 'scene-description'; label: string; fountain: string }) => ({
+      aspect: s.aspect,
+      label: `[User example] ${s.label}`,
+      fountain: s.fountain,
+    }));
+  } catch {
+    // Store may not be available (SSR, etc.) — continue with preset samples only
+  }
+
+  const allSamples = [...presetSamples, ...userSamples];
+  if (allSamples.length === 0) return '';
 
   const lines: string[] = [
     '## Voice Calibration Samples',
@@ -250,12 +421,50 @@ export function buildVoiceSamplesPrompt(voiceId: string): string {
     '',
   ];
 
-  for (const sample of samples) {
+  for (const sample of allSamples) {
     lines.push(`### ${sample.label}`);
     lines.push('');
     lines.push('```fountain');
     lines.push(sample.fountain);
     lines.push('```');
+    lines.push('');
+  }
+
+  return lines.join('\n').trimEnd();
+}
+
+/**
+ * Build a system-prompt section with transformation examples showing
+ * before/after pairs for the given voice profile.
+ *
+ * Returns an empty string if no transformations exist for this voice.
+ */
+export function buildTransformationSamplesPrompt(voiceId: string): string {
+  const transformations = TRANSFORMATION_SAMPLES.filter(t => t.voice === voiceId);
+  if (transformations.length === 0) return '';
+
+  const lines: string[] = [
+    '## Voice Transformation Examples',
+    '',
+    'The following before/after pairs show how to transform flat writing into',
+    'the target voice style:',
+    '',
+  ];
+
+  for (const t of transformations) {
+    lines.push(`### ${t.label}`);
+    lines.push('');
+    lines.push('**Before** (generic):');
+    lines.push('```fountain');
+    lines.push(t.before);
+    lines.push('```');
+    lines.push('');
+    lines.push('**After** (voice-specific):');
+    lines.push('```fountain');
+    lines.push(t.after);
+    lines.push('```');
+    lines.push('');
+    lines.push(`**What changed**: ${t.notes}`);
     lines.push('');
   }
 
