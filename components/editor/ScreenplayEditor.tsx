@@ -57,21 +57,21 @@ export function getEditorHandle(): ScreenplayEditorHandle | null {
 
 const EDITOR_OPTIONS: Monaco.editor.IStandaloneEditorConstructionOptions = {
   fontFamily: 'Courier Prime, Courier New, monospace',
-  fontSize: 15,
-  lineHeight: 22,
-  wordWrap: 'on',
-  wordWrapColumn: 65,
-  wrappingStrategy: 'advanced',
+  fontSize: 13,
+  lineHeight: 20,
+  wordWrap: 'off',
   minimap: { enabled: false },
   lineNumbers: 'on',
   renderLineHighlight: 'line',
   scrollBeyondLastLine: false,
-  padding: { top: 20 },
-  rulers: [65],
+  padding: { top: 16, bottom: 16 },
   automaticLayout: true,
   scrollbar: {
-    verticalScrollbarSize: 8,
-    horizontalScrollbarSize: 8,
+    vertical: 'auto',
+    horizontal: 'auto',
+    verticalScrollbarSize: 10,
+    horizontalScrollbarSize: 10,
+    useShadows: false,
   },
   overviewRulerLanes: 0,
   hideCursorInOverviewRuler: true,
@@ -86,6 +86,7 @@ const EDITOR_OPTIONS: Monaco.editor.IStandaloneEditorConstructionOptions = {
   smoothScrolling: true,
   mouseWheelZoom: false,
   bracketPairColorization: { enabled: false },
+  fixedOverflowWidgets: true,
 };
 
 // ---------------------------------------------------------------------------

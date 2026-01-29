@@ -201,8 +201,18 @@
   font-feature-settings: 'liga' 0;
 }
 
+.monaco-editor,
+.monaco-editor .overflow-guard,
+.monaco-editor .monaco-scrollable-element {
+  background-color: #fafafa !important;
+}
+
 .monaco-editor .margin {
-  background-color: #ffffff !important;
+  background-color: #fafafa !important;
+}
+
+.monaco-editor .lines-content {
+  background-color: #fafafa !important;
 }
 
 /* ============================================================================
