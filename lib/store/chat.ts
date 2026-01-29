@@ -280,8 +280,8 @@ function debouncedPersist() {
 export const useChatStore = create<ChatState>((set, get) => ({
   // -- Initial state --------------------------------------------------------
   messages: [],
-  trustLevel: 1, // Default to Ask mode (show diff for approval)
-  mode: 'diff',
+  trustLevel: 0, // Default to Brainstorm mode (read-only discussion)
+  mode: 'writers-room',
   isStreaming: false,
   isCompacting: false,
   activeChatId: null,
@@ -647,7 +647,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const currentSession = chatSessions.find((s) => s.id === activeChatId);
     if (!currentSession || currentSession.name !== 'New Chat') return;
 
-    // Need at least one user message and one assistant message.
+    // Need at least one user message and one assistant message with content.
     const userMsg = messages.find((m) => m.role === 'user');
     const assistantMsg = messages.find((m) => m.role === 'assistant' && m.content.trim());
     if (!userMsg || !assistantMsg) return;

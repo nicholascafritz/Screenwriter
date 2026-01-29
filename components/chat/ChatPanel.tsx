@@ -36,7 +36,7 @@ import {
 } from '@/lib/store/live-edit';
 import { getEditorHandle } from '@/components/editor/ScreenplayEditor';
 import { startLiveEditAnimation } from '@/lib/editor/animation-engine';
-import TrustDial from './TrustDial';
+import ModeIndicator from './ModeIndicator';
 import ContextBudgetIndicator from './ContextBudget';
 import VoiceSelector from '@/components/voice/VoiceSelector';
 import { buildContextComponents, type ContextBudget } from '@/lib/context/budget-manager';
@@ -139,12 +139,74 @@ export default function ChatPanel({ className }: ChatPanelProps) {
     return () => clearTimeout(timeout);
   }, [content, messages, activeProjectId, currentScene]);
 
+  // -- Slash command preprocessing ------------------------------------------
+
+  const preprocessMessage = useCallback((text: string): { text: string; modeSwitch?: AIMode; modeOnly?: boolean } => {
+    const lower = text.toLowerCase().trim();
+
+    // Check for mode-switching slash commands
+    if (lower === '/brainstorm' || lower === '/plan') {
+      return { text: '', modeSwitch: 'writers-room', modeOnly: true };
+    }
+    if (lower === '/ask' || lower === '/review') {
+      return { text: '', modeSwitch: 'diff', modeOnly: true };
+    }
+    if (lower === '/write' || lower === '/auto' || lower === '/agent') {
+      return { text: '', modeSwitch: 'inline', modeOnly: true };
+    }
+
+    // Check for mode prefix with message (e.g., "/write fix the dialogue")
+    if (lower.startsWith('/brainstorm ') || lower.startsWith('/plan ')) {
+      const msg = text.replace(/^\/(brainstorm|plan)\s+/i, '');
+      return { text: msg, modeSwitch: 'writers-room' };
+    }
+    if (lower.startsWith('/ask ') || lower.startsWith('/review ')) {
+      const msg = text.replace(/^\/(ask|review)\s+/i, '');
+      return { text: msg, modeSwitch: 'diff' };
+    }
+    if (lower.startsWith('/write ') || lower.startsWith('/auto ') || lower.startsWith('/agent ')) {
+      const msg = text.replace(/^\/(write|auto|agent)\s+/i, '');
+      return { text: msg, modeSwitch: 'inline' };
+    }
+
+    return { text };
+  }, []);
+
   // -- Send message ---------------------------------------------------------
 
   const sendMessage = useCallback(async (overrideText?: string, overrideMode?: AIMode) => {
-    const text = (overrideText ?? inputValue).trim();
-    const activeMode = overrideMode ?? mode;
-    if (!text || isStreaming) return;
+    const rawText = (overrideText ?? inputValue).trim();
+    if (!rawText || isStreaming) return;
+
+    // Process slash commands
+    const processed = preprocessMessage(rawText);
+
+    // If it's just a mode switch command (no message), switch mode and return
+    if (processed.modeOnly && processed.modeSwitch) {
+      setMode(processed.modeSwitch);
+      setInputValue('');
+      // Add a system-style message to indicate mode change
+      const modeNames: Record<AIMode, string> = {
+        'writers-room': 'Brainstorm',
+        'diff': 'Ask',
+        'inline': 'Write',
+      };
+      addMessage({
+        role: 'assistant',
+        content: `Switched to **${modeNames[processed.modeSwitch]}** mode.`,
+        mode: processed.modeSwitch,
+      });
+      return;
+    }
+
+    // Apply mode switch if present
+    const activeMode = overrideMode ?? processed.modeSwitch ?? mode;
+    if (processed.modeSwitch) {
+      setMode(processed.modeSwitch);
+    }
+
+    const text = processed.text;
+    if (!text) return;
 
     // Add the user message.
     addMessage({
@@ -485,6 +547,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
     updateLastMessage,
     setStreaming,
     setContent,
+    setMode,
+    preprocessMessage,
   ]);
 
   // -- Keyboard handler for textarea ----------------------------------------
@@ -522,6 +586,22 @@ export default function ChatPanel({ className }: ChatPanelProps) {
     useLiveEditStore.getState().clearQueue();
   }, [clearTodos]);
 
+  // Handle plan approval - sends a continuation message to execute the approved plan
+  const handlePlanApproval = useCallback(() => {
+    const todoStore = useAgentTodoStore.getState();
+    const currentTodos = todoStore.todos;
+
+    // Build a message that includes the approved plan
+    const planSummary = currentTodos.map((t, i) => `${i + 1}. ${t.content}`).join('\n');
+    const continuationMessage = `Plan approved. Execute these steps:\n${planSummary}`;
+
+    // Clear approval state (but keep todos visible for progress tracking)
+    todoStore.approvePlan();
+
+    // Send follow-up message to continue execution
+    sendMessage(continuationMessage, mode);
+  }, [sendMessage, mode]);
+
   // -- Upgrade from Brainstorm to Write mode ----------------------------------
 
   const handleUpgrade = useCallback(() => {
@@ -541,10 +621,13 @@ export default function ChatPanel({ className }: ChatPanelProps) {
         className,
       )}
     >
-      {/* Header: Voice selector, trust dial, and context budget */}
+      {/* Header: Mode indicator, voice selector, and context budget */}
       <div className="shrink-0 space-y-2 p-3 border-b border-border">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
+            <ModeIndicator />
+          </div>
           <div className="flex items-center gap-1">
             {contextBudget && (
               <ContextBudgetIndicator budget={contextBudget} />
@@ -561,7 +644,6 @@ export default function ChatPanel({ className }: ChatPanelProps) {
           </div>
         </div>
         <VoiceSelector className="w-full" />
-        <TrustDial className="w-full" />
       </div>
 
       {/* Chat session list */}
@@ -599,7 +681,7 @@ export default function ChatPanel({ className }: ChatPanelProps) {
         {/* Agent todo panel (Write mode multi-step tasks) */}
         {todosVisible && (
           <AgentTodoPanel
-            onApprove={approvePlan}
+            onApprove={handlePlanApproval}
             onCancel={handleTodoCancel}
           />
         )}

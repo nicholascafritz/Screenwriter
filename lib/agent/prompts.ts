@@ -80,6 +80,7 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
   sections.push(buildVoicePrompt(params.voice));
   sections.push(buildVoiceSamplesPrompt(params.voice.id));
   sections.push(buildModeInstructions(params.mode));
+  sections.push(buildModeTransitionSection(params.mode));
   sections.push(buildModeExamples(params.mode));
   sections.push(buildToolPatterns(params.mode));
 
@@ -205,10 +206,22 @@ function buildModeInstructions(mode: 'inline' | 'diff' | 'agent' | 'writers-room
         '',
         'For simple tasks (single edit, quick fix), skip todos and just execute directly.',
         '',
+        '### Plan Execution',
+        '',
+        'When the user says "Plan approved. Execute these steps:" followed by a numbered list,',
+        'this means they approved your todo plan. Do NOT create new todos — the plan already',
+        'exists in the UI. Instead:',
+        '',
+        '1. Update the existing todos: mark the first task as "in_progress".',
+        '2. Execute that task.',
+        '3. Mark it "completed" and move to the next task.',
+        '4. Continue until all tasks are done.',
+        '',
         'Do NOT:',
         '- Present multiple options in text — use `ask_question` instead.',
         '- Over-explain your changes — one or two sentences is enough.',
         '- Use todos for simple single-step tasks.',
+        '- Create new todos when a plan was just approved — update the existing ones.',
       ].join('\n');
 
     case 'diff':
@@ -525,6 +538,54 @@ function buildFormattingRules(): string {
     '',
     '10. Always insert proper blank lines between elements. Missing blank',
     '    lines will cause the parser to misidentify element types.',
+  ].join('\n');
+}
+
+function buildModeTransitionSection(mode: 'inline' | 'diff' | 'agent' | 'writers-room'): string {
+  const modeLabels = {
+    'writers-room': 'Brainstorm',
+    'diff': 'Ask',
+    'inline': 'Write',
+    'agent': 'Agent',
+  };
+
+  return [
+    '## Mode Transitions',
+    '',
+    `You are currently in **${modeLabels[mode]}** mode.`,
+    '',
+    'The system supports three modes:',
+    '- **Brainstorm**: Read-only discussion, no edits (for planning and ideation)',
+    '- **Ask**: Propose changes for user approval via diff view',
+    '- **Write**: Make changes directly and autonomously',
+    '',
+    '### When to Suggest Mode Changes',
+    '',
+    'If you are in Brainstorm mode and the user indicates readiness to make changes',
+    '(e.g., "let\'s do it", "make those changes", "go ahead", "sounds good, do it"):',
+    '',
+    '1. Summarize what you\'ll do.',
+    '2. Ask: "Should I propose changes for your review (**Ask** mode), or make them directly (**Write** mode)?"',
+    '3. Wait for their choice before proceeding.',
+    '',
+    'Use the `ask_question` tool to present this choice:',
+    '```',
+    '{',
+    '  "header": "Execution mode",',
+    '  "question": "How would you like me to proceed?",',
+    '  "options": [',
+    '    { "id": "ask", "label": "Review each change", "description": "I\'ll propose changes for your approval" },',
+    '    { "id": "write", "label": "Make changes directly", "description": "I\'ll execute autonomously (undo available)" }',
+    '  ]',
+    '}',
+    '```',
+    '',
+    'When the user responds with their choice:',
+    '- If they choose "Review each change" → proceed in Ask mode',
+    '- If they choose "Make changes directly" → proceed in Write mode',
+    '',
+    'Do NOT suggest mode changes for every request — only when transitioning from',
+    'ideation to execution, or when the user explicitly asks about modes.',
   ].join('\n');
 }
 
