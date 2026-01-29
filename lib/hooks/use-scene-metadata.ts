@@ -11,7 +11,7 @@
 import { useMemo } from 'react';
 import { useEditorStore } from '@/lib/store/editor';
 import { useOutlineStore } from '@/lib/store/outline';
-import { useBeatName } from './use-beat-name-map';
+import { useBeatName, useBeatNameMap } from './use-beat-name-map';
 import type { OutlineEntry } from '@/lib/store/outline-types';
 
 export interface SceneMetadata {
@@ -86,7 +86,7 @@ export function useScenesMetadata(
 ): Map<string, SceneMetadata> {
   const entries = useOutlineStore((s) => s.outline?.scenes ?? []);
   const screenplay = useEditorStore((s) => s.screenplay);
-  const beatSheet = useOutlineStore((s) => s.outline?.scenes);
+  const beatNameMap = useBeatNameMap();
 
   return useMemo(() => {
     const map = new Map<string, SceneMetadata>();
@@ -122,12 +122,12 @@ export function useScenesMetadata(
         entry,
         characters,
         elementCount,
-        beatName: undefined, // Would need beat lookup here
+        beatName: entry.beatId ? beatNameMap.get(entry.beatId) : undefined,
         isDrafted: entry.fountainRange !== null,
         sceneNumber: entry.sceneNumber,
       });
     }
 
     return map;
-  }, [sceneIds, entries, screenplay]);
+  }, [sceneIds, entries, screenplay, beatNameMap]);
 }
