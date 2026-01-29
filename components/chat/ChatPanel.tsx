@@ -673,8 +673,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
       {/* Input area */}
       <div className="shrink-0 p-3 space-y-2">
-        {/* Agent question panel (clarifying questions) - temporarily disabled */}
-        {/* {questionPending && <AgentQuestionPanel />} */}
+        {/* Agent question panel (clarifying questions) */}
+        {questionPending && <AgentQuestionPanel />}
 
         {/* Agent todo panel (Write mode multi-step tasks) - temporarily disabled */}
         {/* {todosVisible && (
