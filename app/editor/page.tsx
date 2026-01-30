@@ -42,6 +42,7 @@ import {
   MessageSquare,
   BookOpen,
 } from 'lucide-react';
+import { useLiveEditStore } from '@/lib/store/live-edit';
 
 type LeftPanelTab = 'outline' | 'history' | 'comments' | 'bible';
 
@@ -119,10 +120,19 @@ export default function EditorPage() {
     });
   }, [activeProjectId, openProject, router]);
 
-  // -- Auto-save (1.5s debounce) -------------------------------------------
+  // -- Auto-save (1.5s debounce, skipped during AI editing) -----------------
+  const isAnimating = useLiveEditStore((s) => s.isAnimating);
+  const isAIEditing = useEditorStore((s) => s._isAIEditing);
+
   const debouncedSave = useMemo(
     () =>
       debounce(() => {
+        // Skip auto-save during AI editing to prevent Firestore write queue exhaustion
+        const liveEditState = useLiveEditStore.getState();
+        const editorState = useEditorStore.getState();
+        if (liveEditState.isAnimating || editorState._isAIEditing) {
+          return;
+        }
         useProjectStore.getState().saveCurrentProject();
       }, 1500),
     []
@@ -132,8 +142,22 @@ export default function EditorPage() {
   const voiceId = useProjectStore((s) => s.voiceId);
   useEffect(() => {
     if (!activeProjectId) return;
+    // Skip scheduling during AI editing - save will happen when editing completes
+    if (isAnimating || isAIEditing) return;
     debouncedSave();
-  }, [content, projectName, voiceId, activeProjectId, debouncedSave]);
+  }, [content, projectName, voiceId, activeProjectId, debouncedSave, isAnimating, isAIEditing]);
+
+  // Save once when AI editing completes
+  useEffect(() => {
+    if (!activeProjectId) return;
+    // When AI editing stops, trigger a save
+    if (!isAnimating && !isAIEditing) {
+      const timer = setTimeout(() => {
+        useProjectStore.getState().saveCurrentProject();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAnimating, isAIEditing, activeProjectId]);
 
   // -- File drop handler ----------------------------------------------------
   const handleDropFiles = useCallback(

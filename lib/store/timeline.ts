@@ -91,14 +91,31 @@ function nextEntryId(): string {
 
 // Debounce timer for auto-persisting after addEntry.
 let _persistTimer: ReturnType<typeof setTimeout> | null = null;
-const PERSIST_DEBOUNCE_MS = 1000;
+const PERSIST_DEBOUNCE_MS = 2000; // Increased from 1000ms to reduce Firestore pressure
+const PERSIST_DEBOUNCE_DURING_AI_MS = 5000; // Much longer during AI editing
 
 function schedulePersist() {
   if (_persistTimer) clearTimeout(_persistTimer);
+
+  // Check if AI is currently editing - use longer debounce to batch writes
+  let debounceMs = PERSIST_DEBOUNCE_MS;
+  try {
+    // Dynamic import to avoid circular dependency
+    const { useEditorStore } = require('./editor');
+    const { useLiveEditStore } = require('./live-edit');
+    const isAIEditing = useEditorStore.getState()._isAIEditing;
+    const isAnimating = useLiveEditStore.getState().isAnimating;
+    if (isAIEditing || isAnimating) {
+      debounceMs = PERSIST_DEBOUNCE_DURING_AI_MS;
+    }
+  } catch {
+    // If stores aren't available, use default debounce
+  }
+
   _persistTimer = setTimeout(() => {
     _persistTimer = null;
     useTimelineStore.getState().persist();
-  }, PERSIST_DEBOUNCE_MS);
+  }, debounceMs);
 }
 
 // ---------------------------------------------------------------------------

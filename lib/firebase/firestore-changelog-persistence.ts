@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import type { TimelineEntry } from '@/lib/diff/types';
+import { queueWrite, isWriteQueueBusy } from './write-throttle';
 
 const MAX_ENTRIES_PER_PROJECT = 200;
 
@@ -68,33 +69,41 @@ export async function saveTimelineEntries(
   projectId: string,
   entries: TimelineEntry[],
 ): Promise<void> {
+  // Skip if write queue is already backed up
+  if (isWriteQueueBusy()) {
+    console.debug('[Firestore] Skipping timeline save - write queue busy');
+    return;
+  }
+
   try {
     // Keep only the most recent entries.
     const trimmed = entries.length > MAX_ENTRIES_PER_PROJECT
       ? entries.slice(entries.length - MAX_ENTRIES_PER_PROJECT)
       : entries;
 
-    const batch = writeBatch(db);
+    await queueWrite(async () => {
+      const batch = writeBatch(db);
 
-    // Delete existing entries first to avoid duplicates.
-    const existing = await getDocs(timelineCol(userId, projectId));
-    existing.docs.forEach((d) => batch.delete(d.ref));
+      // Delete existing entries first to avoid duplicates.
+      const existing = await getDocs(timelineCol(userId, projectId));
+      existing.docs.forEach((d) => batch.delete(d.ref));
 
-    // Write new entries.
-    for (const entry of trimmed) {
-      const ref = timelineDoc(userId, projectId, entry.id);
-      batch.set(ref, {
-        timestamp: entry.timestamp,
-        source: entry.source,
-        description: entry.description,
-        diff: entry.diff,
-        sceneName: entry.sceneName ?? null,
-        affectedSceneIds: entry.affectedSceneIds ?? null,
-        undoable: entry.undoable,
-      });
-    }
+      // Write new entries.
+      for (const entry of trimmed) {
+        const ref = timelineDoc(userId, projectId, entry.id);
+        batch.set(ref, {
+          timestamp: entry.timestamp,
+          source: entry.source,
+          description: entry.description,
+          diff: entry.diff,
+          sceneName: entry.sceneName ?? null,
+          affectedSceneIds: entry.affectedSceneIds ?? null,
+          undoable: entry.undoable,
+        });
+      }
 
-    await batch.commit();
+      await batch.commit();
+    });
   } catch {
     // Silently fail.
   }
