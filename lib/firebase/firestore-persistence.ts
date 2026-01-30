@@ -15,7 +15,7 @@ import {
 import { db } from './config';
 import type { ProjectData, ProjectSummary, ProjectStatus } from '@/lib/store/types';
 import { parseFountain } from '@/lib/fountain/parser';
-import { queueWrite, isWriteQueueBusy } from './write-throttle';
+import { queueWrite } from './write-throttle';
 
 // ---------------------------------------------------------------------------
 // Collection helpers
@@ -98,12 +98,6 @@ export async function saveProject(
   userId: string,
   data: ProjectData,
 ): Promise<void> {
-  // Skip if write queue is already backed up
-  if (isWriteQueueBusy()) {
-    console.debug('[Firestore] Skipping project save - write queue busy');
-    return;
-  }
-
   let pageCount = 0;
   let sceneCount = 0;
   try {

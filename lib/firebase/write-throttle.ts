@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// Firestore Write Throttle -- Prevents write queue exhaustion
+// Firestore Write Throttle -- Safety net for write bursts
 // ---------------------------------------------------------------------------
 //
-// Firestore has a limit on the number of pending writes it can queue.
-// During AI editing sessions, many rapid writes can exceed this limit.
-// This module provides a global write queue that throttles concurrent writes.
+// This module provides a lightweight safety net for Firestore writes.
+// With the append-only timeline pattern, write pressure is significantly reduced.
+// These settings are relaxed from the original aggressive throttling.
 // ---------------------------------------------------------------------------
 
 type WriteOperation = () => Promise<void>;
@@ -15,11 +15,11 @@ interface QueuedWrite {
   reject: (error: Error) => void;
 }
 
-// Maximum concurrent Firestore writes (reduced to prevent queue exhaustion)
-const MAX_CONCURRENT_WRITES = 1;
+// Allow moderate concurrency (Firestore can handle many more, but keep safety margin)
+const MAX_CONCURRENT_WRITES = 5;
 
-// Minimum delay between starting new writes (ms) - increased for safety
-const MIN_WRITE_INTERVAL_MS = 500;
+// Minimal delay between writes (just to prevent rapid fire)
+const MIN_WRITE_INTERVAL_MS = 100;
 
 // Current state
 let activeWrites = 0;
@@ -94,11 +94,11 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Check if the write queue is backed up (useful for deciding to skip writes).
- * More aggressive threshold to prevent queue buildup.
+ * Check if the write queue is backed up.
+ * With relaxed settings, this should rarely trigger.
  */
 export function isWriteQueueBusy(): boolean {
-  return writeQueue.length > 2 || activeWrites >= MAX_CONCURRENT_WRITES;
+  return writeQueue.length > 10 || activeWrites >= MAX_CONCURRENT_WRITES;
 }
 
 /**
