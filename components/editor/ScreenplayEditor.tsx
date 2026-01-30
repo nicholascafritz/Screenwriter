@@ -15,6 +15,7 @@ import type * as Monaco from 'monaco-editor';
 import { registerFountainLanguage } from './FountainLanguage';
 import { registerFountainTheme, FOUNTAIN_THEME_NAME } from './FountainTheme';
 import { useEditorStore } from '@/lib/store/editor';
+import { setContentWithReconciliation } from '@/lib/orchestration/content-pipeline';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -122,7 +123,6 @@ export default function ScreenplayEditor({
   // ---- Store bindings -----------------------------------------------------
 
   const content = useEditorStore((s) => s.content);
-  const setContent = useEditorStore((s) => s.setContent);
   const setCursor = useEditorStore((s) => s.setCursor);
   const setSelection = useEditorStore((s) => s.setSelection);
   const setCurrentScene = useEditorStore((s) => s.setCurrentScene);
@@ -328,10 +328,10 @@ export default function ScreenplayEditor({
   const handleChange = useCallback(
     (value: string | undefined) => {
       const text = value ?? '';
-      setContent(text);
+      setContentWithReconciliation(text);
       onContentChange?.(text);
     },
-    [setContent, onContentChange],
+    [onContentChange],
   );
 
   // ---- Cleanup imperative handle on unmount -------------------------------

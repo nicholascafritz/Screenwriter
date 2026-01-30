@@ -10,7 +10,7 @@
 // - applyAIToolResult: setContent + recordAIEdit + reconcile
 // ---------------------------------------------------------------------------
 
-import { useEditorStore } from '@/lib/store/editor';
+import { useEditorStore, scheduleHumanEditCommit } from '@/lib/store/editor';
 import { useOutlineStore } from '@/lib/store/outline';
 import { useCommentStore } from '@/lib/store/comments';
 import type { Comment } from '@/lib/store/comment-types';
@@ -43,6 +43,11 @@ export function setContentWithReconciliation(newContent: string): void {
       newContent,
       (line) => outlineStore.getSceneIdForLine(line),
     );
+  }
+
+  // 4. Schedule timeline entry (skip during replay / AI edits)
+  if (!editorStore._isUndoRedoReplay && !editorStore._isAIEditing) {
+    scheduleHumanEditCommit();
   }
 }
 

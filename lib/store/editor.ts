@@ -257,7 +257,7 @@ export interface EditorState {
 let _humanEditTimer: ReturnType<typeof setTimeout> | null = null;
 const HUMAN_EDIT_DEBOUNCE_MS = 1000;
 
-function scheduleHumanEditCommit() {
+export function scheduleHumanEditCommit() {
   if (_humanEditTimer) clearTimeout(_humanEditTimer);
   _humanEditTimer = setTimeout(() => {
     _humanEditTimer = null;
