@@ -237,11 +237,38 @@ export interface ChatState {
 // Helpers
 // ---------------------------------------------------------------------------
 
-let _messageIdCounter = 0;
+// Start with timestamp to ensure uniqueness across sessions/page reloads
+let _messageIdCounter = Date.now();
 
 function nextMessageId(): string {
   _messageIdCounter += 1;
   return `msg-${_messageIdCounter}`;
+}
+
+/**
+ * Update the message ID counter to be higher than any existing IDs.
+ * This prevents duplicate keys when loading sessions with old-format IDs.
+ */
+function syncMessageIdCounter(messages: Array<{ id?: string }>): void {
+  for (const m of messages) {
+    if (!m.id) continue;
+    // Handle old format: msg-1, msg-2, etc.
+    const oldMatch = m.id.match(/^msg-(\d+)$/);
+    if (oldMatch) {
+      const num = parseInt(oldMatch[1], 10);
+      if (num >= _messageIdCounter) {
+        _messageIdCounter = num + 1;
+      }
+    }
+    // Handle new format: msg-{timestamp}-{counter}
+    const newMatch = m.id.match(/^msg-(\d+)-(\d+)$/);
+    if (newMatch) {
+      const ts = parseInt(newMatch[1], 10);
+      if (ts >= _messageIdCounter) {
+        _messageIdCounter = ts + 1;
+      }
+    }
+  }
 }
 
 /** Get the authenticated user ID from the project store. */
@@ -390,9 +417,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Load messages for the latest session
     const session = await loadSession(userId, projectId, latestId);
     if (session) {
+      // Always regenerate IDs to prevent duplicates from old-format IDs
       const restored: ChatMessage[] = session.messages.map((m) => ({
         ...m,
-        id: m.id || nextMessageId(),
+        id: nextMessageId(), // Always generate fresh IDs
         timestamp: m.timestamp || Date.now(),
       }));
       set({ messages: restored, activeChatId: latestId });
@@ -453,9 +481,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const session = await loadSession(userId, activeProjectId, sessionId);
     if (!session) return;
 
+    // Always regenerate IDs to prevent duplicates from old-format IDs
     const restored: ChatMessage[] = session.messages.map((m) => ({
       ...m,
-      id: m.id || nextMessageId(),
+      id: nextMessageId(), // Always generate fresh IDs
       timestamp: m.timestamp || Date.now(),
     }));
 
