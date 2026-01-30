@@ -15,11 +15,11 @@ interface QueuedWrite {
   reject: (error: Error) => void;
 }
 
-// Maximum concurrent Firestore writes
-const MAX_CONCURRENT_WRITES = 3;
+// Maximum concurrent Firestore writes (reduced to prevent queue exhaustion)
+const MAX_CONCURRENT_WRITES = 1;
 
-// Minimum delay between starting new writes (ms)
-const MIN_WRITE_INTERVAL_MS = 200;
+// Minimum delay between starting new writes (ms) - increased for safety
+const MIN_WRITE_INTERVAL_MS = 500;
 
 // Current state
 let activeWrites = 0;
@@ -72,13 +72,14 @@ async function processQueue(): Promise<void> {
       })
       .catch((error) => {
         activeWrites--;
-        // On resource exhausted, re-queue with exponential backoff
+        // On resource exhausted, wait longer before re-queuing
         if (error?.code === 'resource-exhausted') {
-          console.warn('[Firestore] Write throttled, re-queuing...');
+          console.warn('[Firestore] Write throttled, waiting before retry...');
+          // Longer backoff: 3-6 seconds
           setTimeout(() => {
-            writeQueue.push(item);
+            writeQueue.unshift(item); // Add to front of queue (priority)
             processQueue();
-          }, 1000 + Math.random() * 1000);
+          }, 3000 + Math.random() * 3000);
         } else {
           item.reject(error);
         }
@@ -94,9 +95,10 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Check if the write queue is backed up (useful for deciding to skip writes).
+ * More aggressive threshold to prevent queue buildup.
  */
 export function isWriteQueueBusy(): boolean {
-  return writeQueue.length > 5 || activeWrites >= MAX_CONCURRENT_WRITES;
+  return writeQueue.length > 2 || activeWrites >= MAX_CONCURRENT_WRITES;
 }
 
 /**

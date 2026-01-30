@@ -71,6 +71,18 @@ const MODE_EXAMPLES: Record<string, FewShotExample[]> = {
       responsePattern:
         'Read target scene and preceding scene → identified tonal mismatch → added a bridging beat at end of previous scene and softened the opening of target scene. All prose publication-ready.',
     },
+    {
+      userRequest: 'Rewrite the first act to be more tense and fast paced.',
+      toolSequence: ['ask_question'],
+      responsePattern:
+        'BEFORE analyzing or planning, used ask_question: "How would you like me to increase tension? Options: (1) Faster pacing - cut exposition, tighten scenes (2) Raise stakes - add urgency, consequences (3) More conflict - sharpen clashes (4) Comprehensive overhaul"',
+    },
+    {
+      userRequest: 'Make this screenplay feel more cinematic.',
+      toolSequence: ['ask_question'],
+      responsePattern:
+        'Used ask_question to clarify vague request: "What aspect of the cinematic feel should I focus on? Options: (1) Visual storytelling - more show, less tell (2) Scene transitions - smoother flow (3) Action description - more dynamic prose (4) All of the above"',
+    },
   ],
 
   diff: [
