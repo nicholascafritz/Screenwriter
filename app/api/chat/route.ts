@@ -110,8 +110,15 @@ export async function POST(request: NextRequest) {
           selection,
         });
 
-    // Initialise the Anthropic client (reads ANTHROPIC_API_KEY from env).
-    const client = new Anthropic();
+    // Initialise the Anthropic client with explicit API key from env.
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'ANTHROPIC_API_KEY environment variable is not set' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    const client = new Anthropic({ apiKey });
 
     // Build the messages array from history + the new user message.
     // Filter out any messages with empty content (Claude API requires non-empty content).
