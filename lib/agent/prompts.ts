@@ -22,6 +22,7 @@ import { parseFountain } from '@/lib/fountain/parser';
 import { detectStructure } from '@/lib/fountain/structure';
 import { useCommentStore } from '@/lib/store/comments';
 import { useStoryBibleStore, SAVE_THE_CAT_BEATS } from '@/lib/store/story-bible';
+import { useGuidedWritingStore, type SceneContext } from '@/lib/store/guided-writing';
 import { TURNING_POINT_NORMS, BEAT_TO_TP_MAP } from '@/lib/tripod/reference-data';
 import { generateScreenplaySummary, formatSummaryForPrompt } from '@/lib/context/screenplay-summary';
 import { formatCompactionResultForContext, type CompactionResult } from '@/lib/context/chat-compaction';
@@ -102,6 +103,12 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
 
   sections.push(buildContextSection(params));
   sections.push(buildStoryBibleSection());
+
+  // Include guided writing context when active (only for inline mode)
+  if (params.mode === 'inline') {
+    sections.push(buildGuidedWritingSection());
+  }
+
   sections.push(buildFormattingRules());
   sections.push(buildQualityControlSection());
 
@@ -535,6 +542,75 @@ function buildStoryBibleSection(): string {
   }
 }
 
+/**
+ * Build the guided writing context section.
+ * This provides scene-specific context when guided writing mode is active.
+ */
+function buildGuidedWritingSection(): string {
+  try {
+    const guidedStore = useGuidedWritingStore.getState();
+    if (!guidedStore.isActive) return '';
+
+    const sceneContext = guidedStore.buildSceneContext();
+    if (!sceneContext) return '';
+
+    const lines: string[] = [];
+
+    lines.push('## Guided Scene Writing Mode');
+    lines.push('');
+    lines.push('You are helping the writer develop their screenplay scene by scene.');
+    lines.push('The writer is using a guided workflow where you prompt them about each scene.');
+    lines.push('');
+    lines.push(`**Current Focus**: Scene ${sceneContext.sceneNumber} - "${sceneContext.heading}"`);
+
+    if (sceneContext.beatName) {
+      let beatLine = `**Beat**: ${sceneContext.beatName}`;
+      if (sceneContext.beatDescription) {
+        beatLine += ` - ${sceneContext.beatDescription}`;
+      }
+      lines.push(beatLine);
+    }
+
+    if (sceneContext.characters.length > 0) {
+      lines.push(`**Characters in scene**: ${sceneContext.characters.join(', ')}`);
+    }
+
+    if (sceneContext.summary) {
+      lines.push(`**Summary from outline**: ${sceneContext.summary}`);
+    }
+
+    if (sceneContext.previousSceneSummary) {
+      lines.push(`**Previous scene**: ${sceneContext.previousSceneSummary}`);
+    }
+
+    lines.push('');
+    lines.push(`**Progress**: ${sceneContext.completedScenes} of ${sceneContext.totalScenes} scenes drafted`);
+    lines.push('');
+
+    lines.push('### Your Role in Guided Mode');
+    lines.push('');
+    lines.push('1. **When the writer describes what they want**: Write the full scene using');
+    lines.push('   the `edit_scene` tool. Include action, dialogue, and scene directions.');
+    lines.push('2. **After writing a scene**: Ask if they want to revise or move to the next scene.');
+    lines.push('3. **Reference the story bible**: Use character voices, relationships, and');
+    lines.push('   thematic elements established earlier.');
+    lines.push('4. **Build continuity**: Connect to previous scenes for narrative flow.');
+    lines.push('5. **Ask clarifying questions**: If the writer\'s direction is vague, use');
+    lines.push('   `ask_question` to get specifics before writing.');
+    lines.push('');
+
+    if (sceneContext.nextSceneHeading) {
+      lines.push(`When this scene is complete, prompt the writer about the next scene:`);
+      lines.push(`**Next up**: ${sceneContext.nextSceneHeading}`);
+    }
+
+    return lines.join('\n');
+  } catch {
+    // Store may not be available in all contexts.
+    return '';
+  }
+}
+
 function buildFormattingRules(): string {
   return [
     '## Fountain Formatting Rules',
@@ -713,8 +789,9 @@ export function buildGuideSystemPrompt(params: GuideSystemPromptParams): string 
     '   about. Call `add_theme` when thematic elements surface.',
     '7. **Refine the logline**: As the story takes shape, craft a compelling',
     '   logline and synopsis. Call `update_logline` and `update_synopsis`.',
-    '8. **Generate the outline**: When the writer says they\'re ready (or when',
-    '   most beats are populated), generate a scene-by-scene outline using',
+    '8. **Generate the outline**: When the writer says they\'re ready, first verify',
+    '   ALL 15 beats have been developed and call `update_beat` for any that are',
+    '   missing. Then generate a scene-by-scene outline using',
     '   `generate_scene_outline` for each scene.',
   ].join('\n'));
 
@@ -767,6 +844,8 @@ export function buildGuideSystemPrompt(params: GuideSystemPromptParams): string 
     '- Ensure all 15 beats are represented across the scenes.',
     '- Make scene headings specific and visual (not generic).',
     '- After generating all scenes, provide a brief summary of the outline.',
+    '- IMPORTANT: Before generating scenes, verify all 15 beats are marked complete.',
+    '  If any beats are incomplete, develop them with the writer first.',
   ].join('\n'));
 
   // Include initial context from the project creation form.

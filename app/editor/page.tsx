@@ -20,6 +20,9 @@ import StoryBiblePanel from '@/components/storybible/StoryBiblePanel';
 import OperationLog from '@/components/editor/OperationLog';
 import LiveEditHighlight from '@/components/editor/LiveEditHighlight';
 import LiveEditIndicator from '@/components/editor/LiveEditIndicator';
+import SaveIndicator, { type SaveStatus } from '@/components/editor/SaveIndicator';
+import KeyboardShortcutsModal from '@/components/editor/KeyboardShortcutsModal';
+import StatisticsPanel from '@/components/editor/StatisticsPanel';
 import FileDropZone from '@/components/upload/FileDropZone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,8 +44,10 @@ import {
   Clock,
   MessageSquare,
   BookOpen,
+  BarChart3,
 } from 'lucide-react';
 import { useLiveEditStore } from '@/lib/store/live-edit';
+import { useGuidedWritingStore } from '@/lib/store/guided-writing';
 
 type LeftPanelTab = 'outline' | 'history' | 'comments' | 'bible';
 
@@ -58,6 +63,9 @@ export default function EditorPage() {
   const [diffOriginal, setDiffOriginal] = useState('');
   const [diffModified, setDiffModified] = useState('');
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('outline');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
 
   // Resize state
   const [outlineWidth, setOutlineWidth] = useState(260);
@@ -79,6 +87,8 @@ export default function EditorPage() {
   const isAIActive = useOperationsStore((s) => s.isAIActive);
   const trustLevel = useChatStore((s) => s.trustLevel);
   const setTrustLevel = useChatStore((s) => s.setTrustLevel);
+  const setMode = useChatStore((s) => s.setMode);
+  const isGuidedWritingActive = useGuidedWritingStore((s) => s.isActive);
   const pendingProposal = useEditorStore((s) => s.pendingProposal);
   const pendingProposalDescription = useEditorStore((s) => s.pendingProposalDescription);
   const acceptPendingProposal = useEditorStore((s) => s.acceptPendingProposal);
@@ -120,20 +130,37 @@ export default function EditorPage() {
     });
   }, [activeProjectId, openProject, router]);
 
+  // -- Guided writing mode initialization ------------------------------------
+  // When guided writing mode is active, ensure chat panel is open and set to Write mode
+  useEffect(() => {
+    if (isGuidedWritingActive && activeProjectId) {
+      // Ensure chat panel is visible
+      setShowChat(true);
+      // Set to Write mode for direct editing
+      setMode('inline');
+    }
+  }, [isGuidedWritingActive, activeProjectId, setMode]);
+
   // -- Auto-save (1.5s debounce, skipped during AI editing) -----------------
   const isAnimating = useLiveEditStore((s) => s.isAnimating);
   const isAIEditing = useEditorStore((s) => s._isAIEditing);
 
   const debouncedSave = useMemo(
     () =>
-      debounce(() => {
+      debounce(async () => {
         // Skip auto-save during AI editing to prevent Firestore write queue exhaustion
         const liveEditState = useLiveEditStore.getState();
         const editorState = useEditorStore.getState();
         if (liveEditState.isAnimating || editorState._isAIEditing) {
           return;
         }
-        useProjectStore.getState().saveCurrentProject();
+        setSaveStatus('saving');
+        try {
+          await useProjectStore.getState().saveCurrentProject();
+          setSaveStatus('saved');
+        } catch {
+          setSaveStatus('error');
+        }
       }, 1500),
     []
   );
@@ -152,8 +179,14 @@ export default function EditorPage() {
     if (!activeProjectId) return;
     // When AI editing stops, trigger a save
     if (!isAnimating && !isAIEditing) {
-      const timer = setTimeout(() => {
-        useProjectStore.getState().saveCurrentProject();
+      const timer = setTimeout(async () => {
+        setSaveStatus('saving');
+        try {
+          await useProjectStore.getState().saveCurrentProject();
+          setSaveStatus('saved');
+        } catch {
+          setSaveStatus('error');
+        }
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -234,6 +267,17 @@ export default function EditorPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ? key (Shift+/) to show keyboard shortcuts
+      // Skip if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      if (e.key === '?' && !isTyping) {
+        e.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
+
       if (e.metaKey || e.ctrlKey) {
         // Cmd+Shift shortcuts
         if (e.shiftKey) {
@@ -323,13 +367,13 @@ export default function EditorPage() {
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-foreground">
                 {projectName}
-                {isDirty && <span className="text-muted-foreground ml-1">*</span>}
               </span>
               {sceneCount > 0 && (
                 <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                   {sceneCount} {sceneCount === 1 ? 'scene' : 'scenes'}
                 </Badge>
               )}
+              <SaveIndicator status={isDirty ? 'saving' : saveStatus} />
             </div>
           </div>
 
@@ -393,6 +437,18 @@ export default function EditorPage() {
                 </Button>
               </Tooltip>
             </div>
+
+            {/* Statistics */}
+            <Tooltip content="Script Statistics">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowStatistics(true)}
+              >
+                <BarChart3 className="h-4 w-4" />
+              </Button>
+            </Tooltip>
 
             {/* Save & Export */}
             <ExportMenu />
@@ -599,6 +655,18 @@ export default function EditorPage() {
           </div>
         </footer>
       </div>
+
+      {/* Keyboard shortcuts modal */}
+      <KeyboardShortcutsModal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
+
+      {/* Statistics panel */}
+      <StatisticsPanel
+        open={showStatistics}
+        onClose={() => setShowStatistics(false)}
+      />
     </FileDropZone>
     </AuthGate>
   );

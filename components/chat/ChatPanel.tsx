@@ -44,9 +44,11 @@ import { useAgentTodoStore } from '@/lib/store/agent-todos';
 import { useAgentQuestionStore } from '@/lib/store/agent-questions';
 import AgentTodoPanel from './AgentTodoPanel';
 import AgentQuestionPanel from './AgentQuestionPanel';
+import GuidedWritingHeader from './GuidedWritingHeader';
 import type { AgentTodo } from '@/lib/agent/todo-tools';
 import type { AgentQuestion, QuestionResponse } from '@/lib/agent/question-tools';
 import { formatQuestionResponse } from '@/lib/agent/question-tools';
+import { useGuidedWritingStore } from '@/lib/store/guided-writing';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,6 +95,12 @@ export default function ChatPanel({ className }: ChatPanelProps) {
   const questionPending = useAgentQuestionStore((s) => s.isAwaitingResponse);
   const clearQuestion = useAgentQuestionStore((s) => s.clearQuestion);
 
+  // Guided writing mode bindings
+  const isGuidedWritingActive = useGuidedWritingStore((s) => s.isActive);
+  const hasInjectedInitialPrompt = useGuidedWritingStore((s) => s.hasInjectedInitialPrompt);
+  const markInitialPromptInjected = useGuidedWritingStore((s) => s.markInitialPromptInjected);
+  const buildSceneContext = useGuidedWritingStore((s) => s.buildSceneContext);
+
   // -- Local state ----------------------------------------------------------
 
   const [inputValue, setInputValue] = useState('');
@@ -138,6 +146,52 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
     return () => clearTimeout(timeout);
   }, [content, messages, activeProjectId, currentScene]);
+
+  // -- Guided writing mode: inject initial prompt ---------------------------
+  useEffect(() => {
+    if (!isGuidedWritingActive || hasInjectedInitialPrompt || messages.length > 0) {
+      return;
+    }
+
+    const sceneContext = buildSceneContext();
+    if (!sceneContext) return;
+
+    // Build the initial AI message that prompts for Scene 1
+    let initialMessage = `Let's write your screenplay scene by scene!\n\n`;
+    initialMessage += `**Scene ${sceneContext.sceneNumber}: ${sceneContext.heading}**`;
+
+    if (sceneContext.beatName) {
+      initialMessage += ` _(${sceneContext.beatName})_`;
+    }
+
+    initialMessage += `\n\n`;
+
+    if (sceneContext.summary) {
+      initialMessage += `From your outline: "${sceneContext.summary}"\n\n`;
+    }
+
+    if (sceneContext.characters.length > 0) {
+      initialMessage += `Characters in this scene: ${sceneContext.characters.join(', ')}\n\n`;
+    }
+
+    initialMessage += `**What happens in this scene?** Describe the action, emotions, or key dialogue moments you envision. I'll write the full scene based on your direction.`;
+
+    // Inject the message
+    addMessage({
+      role: 'assistant',
+      content: initialMessage,
+      mode: 'inline',
+    });
+
+    markInitialPromptInjected();
+  }, [
+    isGuidedWritingActive,
+    hasInjectedInitialPrompt,
+    messages.length,
+    buildSceneContext,
+    addMessage,
+    markInitialPromptInjected,
+  ]);
 
   // -- Slash command preprocessing ------------------------------------------
 
@@ -679,6 +733,9 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
       {/* Input area */}
       <div className="shrink-0 p-3 space-y-2">
+        {/* Guided writing header (scene progress) */}
+        {isGuidedWritingActive && <GuidedWritingHeader />}
+
         {/* Agent question panel (clarifying questions) */}
         {questionPending && <AgentQuestionPanel />}
 

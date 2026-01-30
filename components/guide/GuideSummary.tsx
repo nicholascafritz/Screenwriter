@@ -6,6 +6,7 @@ import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useProjectStore } from '@/lib/store/project';
 import { useEditorStore } from '@/lib/store/editor';
 import { useOutlineStore } from '@/lib/store/outline';
+import { useGuidedWritingStore } from '@/lib/store/guided-writing';
 import { outlineToFountain } from '@/lib/guide/outline-to-fountain';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -13,16 +14,22 @@ import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2,
   FileText,
+  Loader2,
   PenLine,
   Sparkles,
 } from 'lucide-react';
+
+interface GuideSummaryProps {
+  /** Whether scene generation is still in progress. */
+  isGenerating?: boolean;
+}
 
 /**
  * Transition screen shown after the guide conversation and outline generation
  * are complete.  Shows a summary of the beat sheet and scene outline, and
  * offers two paths forward: auto-generate a Fountain skeleton or start blank.
  */
-export default function GuideSummary() {
+export default function GuideSummary({ isGenerating = false }: GuideSummaryProps) {
   const router = useRouter();
   const bible = useStoryBibleStore((s) => s.bible);
   const projectName = useProjectStore((s) => s.name);
@@ -46,6 +53,8 @@ export default function GuideSummary() {
     const fountain = outlineToFountain(projectName, outlineScenes, beatNameMap);
     useEditorStore.getState().setContent(fountain);
     useEditorStore.setState({ _lastCommittedContent: fountain });
+    // Activate guided writing mode for scene-by-scene AI prompting
+    useGuidedWritingStore.getState().startGuidedWriting();
     router.push('/editor');
   };
 
@@ -110,11 +119,20 @@ export default function GuideSummary() {
           </section>
 
           {/* Scene Outline */}
-          {outlineScenes.length > 0 && (
+          {(outlineScenes.length > 0 || isGenerating) && (
             <section>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4 text-primary" />
+                )}
                 Scene Outline ({outlineScenes.length} scenes)
+                {isGenerating && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    — Generating...
+                  </span>
+                )}
               </h3>
               <div className="space-y-1.5">
                 {outlineScenes.map((entry) => (
@@ -159,9 +177,14 @@ export default function GuideSummary() {
               size="lg"
               className="gap-2 flex-1"
               onClick={handleGenerateSkeleton}
+              disabled={isGenerating}
             >
-              <FileText className="h-4 w-4" />
-              Generate Screenplay Skeleton
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {isGenerating ? 'Generating Scenes...' : 'Generate Screenplay Skeleton'}
             </Button>
           )}
           <Button
