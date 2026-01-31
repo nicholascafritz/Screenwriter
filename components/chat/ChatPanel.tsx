@@ -108,6 +108,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Ref to hold the latest sendMessage function to avoid stale closures in question callbacks
+  const sendMessageRef = useRef<(text?: string, mode?: AIMode) => Promise<void>>(undefined);
 
   // -- Auto-scroll to bottom on new messages --------------------------------
 
@@ -491,17 +493,10 @@ export default function ChatPanel({ className }: ChatPanelProps) {
                   useAgentQuestionStore.getState().setPendingQuestion(
                     question,
                     (response: QuestionResponse) => {
-                      // Format the response and add as a user message to continue the conversation
+                      // Format the response as a user message to continue the conversation
                       const responseText = formatQuestionResponse(response);
-                      // Add as assistant context (the AI will see this in the next turn)
-                      const state = useChatStore.getState();
-                      const msgs = [...state.messages];
-                      if (msgs.length > 0) {
-                        const last = { ...msgs[msgs.length - 1] };
-                        last.content += `\n\n**User selected:** ${responseText}`;
-                        msgs[msgs.length - 1] = last;
-                        useChatStore.setState({ messages: msgs });
-                      }
+                      // Send the response as a new message (use ref to avoid stale closure)
+                      sendMessageRef.current?.(responseText);
                     }
                   );
                 }
@@ -610,6 +605,11 @@ export default function ChatPanel({ className }: ChatPanelProps) {
     setMode,
     preprocessMessage,
   ]);
+
+  // Keep the ref updated with the latest sendMessage function
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   // -- Keyboard handler for textarea ----------------------------------------
 
