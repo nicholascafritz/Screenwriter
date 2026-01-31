@@ -17,6 +17,12 @@
     --background: 0 0% 5%;              /* #0D0D0F - True black with warmth */
     --foreground: 240 5% 96%;           /* #F4F4F5 - Light text */
 
+    /* Design system background variables (hex for direct use) */
+    --color-bg-base: #0D0D0F;           /* True black with warmth */
+    --color-bg-raised: #141416;         /* Panels, cards */
+    --color-bg-elevated: #1A1A1D;       /* Dropdowns, modals */
+    --color-bg-hover: #222226;          /* Interactive hover states */
+
     --card: 0 0% 8%;                    /* #141416 - Panels, cards */
     --card-foreground: 240 5% 96%;
 
