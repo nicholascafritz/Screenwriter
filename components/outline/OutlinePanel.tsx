@@ -106,13 +106,17 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
   const plannedCount = entries.filter((e) => e.fountainRange === null).length;
 
   /**
-   * Build a lookup from startLine → parsed Scene for enrichment data.
+   * Build a lookup from normalized heading → parsed Scene for enrichment data.
+   * Using heading instead of startLine avoids race conditions between
+   * screenplay parse updates and outline reconciliation updates.
    */
   const enrichmentMap = useMemo(() => {
-    const map = new Map<number, SceneEnrichment>();
+    const map = new Map<string, SceneEnrichment>();
     if (!screenplay) return map;
     for (const scene of screenplay.scenes) {
-      map.set(scene.startLine, {
+      // Normalize heading for consistent lookup
+      const key = scene.heading.toLowerCase().trim();
+      map.set(key, {
         characters: scene.characters,
         elementCount: scene.elements.length,
       });
@@ -245,8 +249,8 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
           <BeatCard
             entry={entry}
             enrichment={
-              entry.fountainRange
-                ? enrichmentMap.get(entry.fountainRange.startLine)
+              entry.heading
+                ? enrichmentMap.get(entry.heading.toLowerCase().trim())
                 : undefined
             }
             sceneIndex={idx}
@@ -397,8 +401,8 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
               <BeatCard
                 entry={activeDragEntry}
                 enrichment={
-                  activeDragEntry.fountainRange
-                    ? enrichmentMap.get(activeDragEntry.fountainRange.startLine)
+                  activeDragEntry.heading
+                    ? enrichmentMap.get(activeDragEntry.heading.toLowerCase().trim())
                     : undefined
                 }
                 sceneIndex={entries.findIndex((e) => e.id === activeDragEntry.id)}
