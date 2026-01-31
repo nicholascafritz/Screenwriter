@@ -158,8 +158,8 @@ export async function POST(request: NextRequest) {
           );
 
           const iterationLimit =
-            resolvedMode === 'writers-room' ? 25 :
-            resolvedMode === 'story-guide' ? 50 : 10;
+            resolvedMode === 'writers-room' ? 40 :
+            resolvedMode === 'story-guide' ? 50 : 30;
           currentScreenplay = await runConversationLoop(
             client,
             systemPrompt,
@@ -228,7 +228,7 @@ async function runConversationLoop(
   controller: ReadableStreamDefaultController,
   mode: string,
   modelConfig: ModelConfig,
-  maxIterations = 10,
+  maxIterations = 30,
 ): Promise<string> {
   let currentScreenplay = screenplay;
 

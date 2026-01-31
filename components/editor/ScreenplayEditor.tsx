@@ -76,7 +76,7 @@ const EDITOR_OPTIONS: Monaco.editor.IStandaloneEditorConstructionOptions = {
   fontFamily: 'Courier Prime, Courier New, monospace',
   fontSize: 13,
   lineHeight: 20,
-  wordWrap: 'off',
+  wordWrap: 'bounded',
   minimap: { enabled: false },
   lineNumbers: 'on',
   renderLineHighlight: 'line',
