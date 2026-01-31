@@ -277,6 +277,119 @@ export async function getDialogueExamples(options: {
   return shuffled.slice(0, options.topK || 3);
 }
 
+/**
+ * Get action line examples for visual/lean prose writing.
+ */
+export async function getActionLineExamples(options: {
+  genre?: string;
+  topK?: number;
+}): Promise<VectorChunk[]> {
+  const chunks = await getVectorStore();
+
+  let candidates = chunks.filter((c) => c.type === 'action_line');
+
+  if (options.genre) {
+    const lowerGenre = options.genre.toLowerCase();
+    candidates = candidates.filter(
+      (c) => c.metadata.genre?.toLowerCase() === lowerGenre
+    );
+  }
+
+  // Return topK random samples
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, options.topK || 3);
+}
+
+/**
+ * Get beat examples (Save the Cat structure demonstrations).
+ */
+export async function getBeatExamples(options: {
+  beat?: string;
+  topK?: number;
+}): Promise<VectorChunk[]> {
+  const chunks = await getVectorStore();
+
+  let candidates = chunks.filter((c) => c.type === 'beat_example');
+
+  if (options.beat) {
+    const lowerBeat = options.beat.toLowerCase();
+    candidates = candidates.filter(
+      (c) => c.metadata.beatName?.toLowerCase().includes(lowerBeat)
+    );
+  }
+
+  // Return topK random samples
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, options.topK || 3);
+}
+
+/**
+ * Get voice transformation examples (before/after style pairs).
+ */
+export async function getVoiceTransformationExamples(options: {
+  voiceId?: string;
+  transformationType?: string;
+  topK?: number;
+}): Promise<VectorChunk[]> {
+  const chunks = await getVectorStore();
+
+  let candidates = chunks.filter((c) => c.type === 'voice_transformation');
+
+  if (options.voiceId) {
+    candidates = candidates.filter(
+      (c) => c.metadata.voiceId === options.voiceId
+    );
+  }
+
+  if (options.transformationType) {
+    candidates = candidates.filter(
+      (c) => c.metadata.transformationType === options.transformationType
+    );
+  }
+
+  // Return topK random samples
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, options.topK || 3);
+}
+
+/**
+ * Get subtext examples (on-the-nose vs subtext pairs).
+ */
+export async function getSubtextExamples(options: {
+  genre?: string;
+  topK?: number;
+}): Promise<VectorChunk[]> {
+  const chunks = await getVectorStore();
+
+  let candidates = chunks.filter((c) => c.type === 'subtext_example');
+
+  if (options.genre) {
+    const lowerGenre = options.genre.toLowerCase();
+    candidates = candidates.filter(
+      (c) => c.metadata.genre?.toLowerCase() === lowerGenre
+    );
+  }
+
+  // Return topK random samples
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, options.topK || 3);
+}
+
+/**
+ * Get tool pattern examples for workflow demonstrations.
+ */
+export async function getToolPatternExamples(options: {
+  topK?: number;
+}): Promise<VectorChunk[]> {
+  const chunks = await getVectorStore();
+
+  const candidates = chunks.filter((c) => c.type === 'tool_pattern');
+
+  // Return topK random samples
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, options.topK || 3);
+}
+
 // ---------------------------------------------------------------------------
 // Statistics
 // ---------------------------------------------------------------------------
@@ -296,6 +409,12 @@ export async function getVectorStoreStats(): Promise<{
     turning_point: 0,
     scene: 0,
     dialogue_excerpt: 0,
+    // New chunk types (will be populated when vectors are regenerated)
+    beat_example: 0,
+    voice_transformation: 0,
+    tool_pattern: 0,
+    action_line: 0,
+    subtext_example: 0,
   };
 
   const byGenre: Record<string, number> = {};
