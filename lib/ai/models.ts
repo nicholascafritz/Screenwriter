@@ -106,7 +106,7 @@ export const OPUS_THINKING: ModelConfig = {
 export const OPUS_STANDARD: ModelConfig = {
   model: MODELS.opus,
   label: 'Opus 4.5',
-  maxTokens: 8192,
+  maxTokens: 16384,
 };
 
 /**
@@ -135,7 +135,7 @@ export const SONNET_THINKING: ModelConfig = {
 export const SONNET_STANDARD: ModelConfig = {
   model: MODELS.sonnet,
   label: 'Sonnet 4.5',
-  maxTokens: 4096,
+  maxTokens: 16384,
 };
 
 /**

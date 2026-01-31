@@ -257,8 +257,24 @@ async function runConversationLoop(
       (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
     );
 
+    // If no tool calls and the response completed naturally, we're done.
+    // But if we hit the token limit (stop_reason === 'max_tokens'), continue
+    // the loop to let the model resume writing.
     if (toolUseBlocks.length === 0) {
-      // No tool calls -- conversation turn is complete.
+      if (finalMessage.stop_reason === 'max_tokens') {
+        // Model hit output limit mid-response. Append the partial response
+        // and prompt continuation.
+        messages.push({
+          role: 'assistant',
+          content: finalMessage.content,
+        });
+        messages.push({
+          role: 'user',
+          content: 'Continue from where you left off.',
+        });
+        continue;
+      }
+      // Normal completion -- conversation turn is complete.
       break;
     }
 
