@@ -303,10 +303,19 @@ export function buildVoicePrompt(voice: VoiceProfile): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Find a preset voice profile by its id.
+ * Find a voice profile by its id.
  *
- * Returns `undefined` if no preset matches.
+ * Checks custom voices first (if provided), then falls back to presets.
+ * Returns `undefined` if no match is found.
  */
-export function getVoiceById(id: string): VoiceProfile | undefined {
+export function getVoiceById(
+  id: string,
+  customVoices: VoiceProfile[] = [],
+): VoiceProfile | undefined {
+  // Check custom voices first (allows user overrides)
+  const custom = customVoices.find((v) => v.id === id);
+  if (custom) return custom;
+
+  // Fall back to presets
   return PRESET_VOICES.find((v) => v.id === id);
 }

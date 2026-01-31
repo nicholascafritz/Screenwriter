@@ -34,7 +34,7 @@ import Anthropic from '@anthropic-ai/sdk';
 export const maxDuration = 120;
 import { buildSystemPrompt } from '@/lib/agent/prompts';
 import { SCREENPLAY_TOOLS, executeToolCall } from '@/lib/agent/tools';
-import { getVoiceById, PRESET_VOICES } from '@/lib/agent/voices';
+import { getVoiceById, PRESET_VOICES, type VoiceProfile } from '@/lib/agent/voices';
 import { computePatch } from '@/lib/diff/patch-transport';
 import { buildModelParams } from '@/lib/ai/models';
 import { getModelForTask } from '@/lib/ai/model-router';
@@ -45,6 +45,9 @@ import { getModelForTask } from '@/lib/ai/model-router';
 
 interface AgentRequestBody {
   message: string;
+  /** Full voice profile object (preferred for custom voices). */
+  voice?: VoiceProfile;
+  /** Voice ID for preset lookup (legacy, for backward compatibility). */
   voiceId?: string;
   screenplay: string;
   history?: Anthropic.MessageParam[];
@@ -93,7 +96,7 @@ function formatToolsForAPI(): Anthropic.Tool[] {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as AgentRequestBody;
-    const { message, voiceId, screenplay, history } = body;
+    const { message, voice: bodyVoice, voiceId, screenplay, history } = body;
 
     // Validate required fields.
     if (!message || typeof message !== 'string') {
@@ -111,7 +114,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve the voice profile.
-    const voice = (voiceId ? getVoiceById(voiceId) : undefined) ?? PRESET_VOICES[0];
+    // Priority: full voice object > voiceId lookup > default preset
+    const voice = bodyVoice ?? (voiceId ? getVoiceById(voiceId) : undefined) ?? PRESET_VOICES[0];
 
     // Build the system prompt in agent mode.
     const systemPrompt = buildSystemPrompt({

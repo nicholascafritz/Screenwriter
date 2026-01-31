@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { useChatStore, type AIMode } from '@/lib/store/chat';
 import { useEditorStore } from '@/lib/store/editor';
 import { useProjectStore } from '@/lib/store/project';
-import { getVoiceById, PRESET_VOICES } from '@/lib/agent/voices';
+import { useVoiceStore } from '@/lib/store/voice';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -298,8 +298,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
       // If compaction check fails, proceed with the full history.
     }
 
-    // Resolve the current voice profile.
-    const voice = getVoiceById(voiceId) ?? PRESET_VOICES[0];
+    // Resolve the current voice profile (from voice store, which includes custom voices).
+    const voice = useVoiceStore.getState().getVoiceById(voiceId);
 
     // Build the request payload (re-read messages after possible compaction).
     // All modes use the /api/chat endpoint
@@ -307,7 +307,9 @@ export default function ChatPanel({ className }: ChatPanelProps) {
     const payload = {
       message: text,
       mode: activeMode,
-      voiceId: voice.id,
+      // Pass full voice object for custom voices, or just voiceId for presets
+      voice: voice,
+      voiceId: voiceId,
       screenplay: content,
       cursorScene: currentScene ?? undefined,
       selection: selection ?? undefined,

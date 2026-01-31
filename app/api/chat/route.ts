@@ -26,7 +26,7 @@ import Anthropic from '@anthropic-ai/sdk';
 export const maxDuration = 120;
 import { buildSystemPrompt, buildGuideSystemPrompt } from '@/lib/agent/prompts';
 import { executeToolCall, getToolsForMode } from '@/lib/agent/tools';
-import { getVoiceById, PRESET_VOICES } from '@/lib/agent/voices';
+import { getVoiceById, PRESET_VOICES, type VoiceProfile } from '@/lib/agent/voices';
 import { computePatch } from '@/lib/diff/patch-transport';
 import { buildModelParams, type ModelConfig } from '@/lib/ai/models';
 import { chatModeToTask, getModelForTask } from '@/lib/ai/model-router';
@@ -38,6 +38,9 @@ import { chatModeToTask, getModelForTask } from '@/lib/ai/model-router';
 interface ChatRequestBody {
   message: string;
   mode: 'inline' | 'diff' | 'writers-room' | 'story-guide';
+  /** Full voice profile object (preferred for custom voices). */
+  voice?: VoiceProfile;
+  /** Voice ID for preset lookup (legacy, for backward compatibility). */
   voiceId?: string;
   screenplay: string;
   cursorScene?: string;
@@ -77,7 +80,7 @@ function formatToolsForAPI(mode: string): Anthropic.Tool[] {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ChatRequestBody;
-    const { message, mode, voiceId, screenplay, cursorScene, selection, history } = body;
+    const { message, mode, voice: bodyVoice, voiceId, screenplay, cursorScene, selection, history } = body;
 
     // Validate required fields.
     if (!message || typeof message !== 'string') {
@@ -96,7 +99,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve the voice profile.
-    const voice = (voiceId ? getVoiceById(voiceId) : undefined) ?? PRESET_VOICES[0];
+    // Priority: full voice object > voiceId lookup > default preset
+    const voice = bodyVoice ?? (voiceId ? getVoiceById(voiceId) : undefined) ?? PRESET_VOICES[0];
 
     // Build the system prompt (guide mode uses a separate prompt builder).
     const resolvedModeForPrompt = mode ?? 'inline';
