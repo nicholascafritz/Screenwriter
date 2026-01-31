@@ -39,6 +39,10 @@ import {
   detectPotentialDrift,
   type ReinforcementContext,
 } from '@/lib/agent/voice-reinforcement';
+import {
+  retrieveContextForIntent,
+  isVectorStoreAvailable,
+} from '@/lib/tripod/retrieval';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -128,8 +132,30 @@ export async function POST(request: NextRequest) {
     };
     const shouldReinforce = shouldInjectReinforcement(reinforcementContext);
 
-    // Build the system prompt (guide mode uses a separate prompt builder).
+    // Resolve mode for prompt building.
     const resolvedModeForPrompt = mode ?? 'inline';
+
+    // Retrieve relevant TRIPOD examples if configured for this intent.
+    // This provides semantically similar screenplay examples for voice consistency.
+    let retrievalContext: string | undefined;
+    if (dispatchResult.retrievalConfig && resolvedModeForPrompt !== 'story-guide') {
+      try {
+        const retrieval = await retrieveContextForIntent(
+          message,
+          dispatchResult,
+          voice,
+          { genre: body.guideContext?.genre }
+        );
+        if (retrieval.didRetrieve) {
+          retrievalContext = retrieval.formattedPrompt;
+        }
+      } catch (error) {
+        // Retrieval is optional — log and continue without it
+        console.warn('TRIPOD retrieval failed:', error);
+      }
+    }
+
+    // Build the system prompt (guide mode uses a separate prompt builder).
     const systemPrompt = resolvedModeForPrompt === 'story-guide'
       ? buildGuideSystemPrompt(body.guideContext ?? {})
       : buildSystemPrompt({
@@ -140,6 +166,7 @@ export async function POST(request: NextRequest) {
           selection,
           projectId: body.projectId,
           dispatchResult, // Pass intent classification to prompt builder
+          retrievalContext, // Pass retrieved TRIPOD examples
         });
 
     // If reinforcement is needed, prepend it to the user message.

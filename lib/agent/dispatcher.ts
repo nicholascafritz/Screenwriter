@@ -57,6 +57,19 @@ export type SubIntent =
   | DevelopmentSubIntent
   | EditingSubIntent;
 
+import type { TurningPointKey } from '@/lib/tripod/types';
+import type { ChunkType } from '@/lib/tripod/vector-store';
+
+/** Configuration for semantic retrieval of TRIPOD examples. */
+export interface RetrievalConfig {
+  /** Types of chunks to retrieve (turning_point, scene, dialogue_excerpt). */
+  chunkTypes: ChunkType[];
+  /** Filter to a specific turning point label. */
+  turningPointFilter?: TurningPointKey;
+  /** Number of examples to retrieve. */
+  topK: number;
+}
+
 export interface DispatchResult {
   /** The primary intent category. */
   category: IntentCategory;
@@ -72,6 +85,9 @@ export interface DispatchResult {
 
   /** Voice reinforcement intensity (1 = light, 2 = moderate, 3 = strong). */
   voiceIntensity: 1 | 2 | 3;
+
+  /** Configuration for retrieving relevant TRIPOD examples. */
+  retrievalConfig?: RetrievalConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +101,7 @@ interface IntentPattern {
   keywords: string[];
   suggestedTools: string[];
   voiceIntensity: 1 | 2 | 3;
+  retrievalConfig?: RetrievalConfig;
 }
 
 const INTENT_PATTERNS: IntentPattern[] = [
@@ -100,6 +117,10 @@ const INTENT_PATTERNS: IntentPattern[] = [
     keywords: ['write scene', 'draft scene', 'create scene', 'new scene', 'opening scene'],
     suggestedTools: ['insert_scene', 'edit_scene'],
     voiceIntensity: 3,
+    retrievalConfig: {
+      chunkTypes: ['scene', 'dialogue_excerpt'],
+      topK: 3,
+    },
   },
   {
     category: 'writing',
@@ -112,6 +133,10 @@ const INTENT_PATTERNS: IntentPattern[] = [
     keywords: ['dialogue', 'conversation', 'exchange', 'lines for', 'what would they say'],
     suggestedTools: ['dialogue', 'edit_scene'],
     voiceIntensity: 3,
+    retrievalConfig: {
+      chunkTypes: ['dialogue_excerpt'],
+      topK: 3,
+    },
   },
   {
     category: 'writing',
@@ -137,6 +162,10 @@ const INTENT_PATTERNS: IntentPattern[] = [
     keywords: ['rewrite', 'revise', 'rework', 'redo', 'make it', 'try again', 'another version'],
     suggestedTools: ['edit_scene', 'replace_text', 'dialogue'],
     voiceIntensity: 3,
+    retrievalConfig: {
+      chunkTypes: ['scene', 'dialogue_excerpt'],
+      topK: 2,
+    },
   },
   {
     category: 'writing',
@@ -239,6 +268,10 @@ const INTENT_PATTERNS: IntentPattern[] = [
     keywords: ['beat', 'catalyst', 'midpoint', 'climax', 'inciting incident', 'break into'],
     suggestedTools: ['update_beat', 'get_structure'],
     voiceIntensity: 2,
+    retrievalConfig: {
+      chunkTypes: ['turning_point'],
+      topK: 5,
+    },
   },
   {
     category: 'development',
@@ -404,6 +437,7 @@ export function classifyIntent(
     confidence,
     suggestedTools: bestMatch.suggestedTools,
     voiceIntensity: bestMatch.voiceIntensity,
+    retrievalConfig: bestMatch.retrievalConfig,
   };
 }
 

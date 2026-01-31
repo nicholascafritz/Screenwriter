@@ -57,6 +57,9 @@ export interface SystemPromptParams {
 
   /** Intent classification result from the dispatcher. */
   dispatchResult?: DispatchResult;
+
+  /** Pre-formatted retrieval context from TRIPOD vector search. */
+  retrievalContext?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +99,12 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
       params.dispatchResult.subIntent,
       params.voice,
     ));
+  }
+
+  // Add retrieved TRIPOD examples if available
+  // These are semantically similar examples from professional screenplays
+  if (params.retrievalContext) {
+    sections.push(params.retrievalContext);
   }
 
   sections.push(buildModeInstructions(params.mode));

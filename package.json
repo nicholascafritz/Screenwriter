@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:tripod-data": "npx tsx scripts/build-tripod-data.ts",
+    "build:tripod-vectors": "npx tsx scripts/build-tripod-vectors.ts"
   },
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
