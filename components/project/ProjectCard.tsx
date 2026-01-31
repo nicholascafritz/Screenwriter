@@ -140,19 +140,19 @@ export default function ProjectCard({
   const contextMenu = (
     <div ref={menuRef} className="relative flex-shrink-0">
       <button
-        className="p-1 rounded hover:bg-gray-800 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="p-1 rounded hover:bg-[var(--color-bg-hover)] opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={(e) => {
           e.stopPropagation();
           setMenuOpen((v) => !v);
         }}
       >
-        <MoreVertical className="h-4 w-4 text-gray-500" />
+        <MoreVertical className="h-4 w-4 text-muted-foreground" />
       </button>
 
       {menuOpen && (
-        <div className="absolute right-0 top-8 z-50 w-36 rounded-lg border border-gray-700 bg-gray-900/95 backdrop-blur-sm py-1 shadow-lg">
+        <div className="absolute right-0 top-8 z-50 w-36 rounded-lg border border-border bg-popover/95 backdrop-blur-sm py-1 shadow-lg">
           <button
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-800 text-left text-gray-100"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-[var(--color-bg-hover)] text-left text-foreground"
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen(false);
@@ -164,7 +164,7 @@ export default function ProjectCard({
             Rename
           </button>
           <button
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-800 text-left text-gray-100"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-[var(--color-bg-hover)] text-left text-foreground"
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen(false);
@@ -176,7 +176,7 @@ export default function ProjectCard({
           </button>
           {onToggleArchive && (
             <button
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-800 text-left text-gray-100"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-[var(--color-bg-hover)] text-left text-foreground"
               onClick={(e) => {
                 e.stopPropagation();
                 setMenuOpen(false);
@@ -235,10 +235,10 @@ export default function ProjectCard({
     return (
       <div
         className={cn(
-          "group relative flex items-center gap-4 rounded-lg border bg-gray-900 px-4 py-3 transition-all cursor-pointer",
+          "group relative flex items-center gap-4 rounded-lg border bg-card px-4 py-3 transition-all cursor-pointer",
           isSelected
-            ? "border-amber-500 bg-amber-500/5"
-            : "border-gray-800 hover:bg-gray-800/50 hover:border-gray-700"
+            ? "border-primary bg-primary/5"
+            : "border-border hover:bg-[var(--color-bg-hover)] hover:border-border/80"
         )}
         onClick={() => {
           if (selectionMode && onSelectionChange) {
@@ -254,8 +254,8 @@ export default function ProjectCard({
             className={cn(
               "flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
               isSelected
-                ? "bg-amber-500 border-amber-500 text-gray-950"
-                : "border-gray-700 hover:border-amber-500"
+                ? "bg-primary border-primary text-primary-foreground"
+                : "border-border hover:border-primary"
             )}
             onClick={(e) => {
               e.stopPropagation();
@@ -271,8 +271,8 @@ export default function ProjectCard({
             className={cn(
               "p-1 rounded transition-all flex-shrink-0",
               project.isFavorite
-                ? "text-amber-400"
-                : "text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400"
+                ? "text-primary"
+                : "text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-primary"
             )}
             onClick={(e) => {
               e.stopPropagation();
@@ -282,8 +282,8 @@ export default function ProjectCard({
             <Star className={cn("h-4 w-4", project.isFavorite && "fill-current")} />
           </button>
         )}
-        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10">
-          <FileText className="h-4 w-4 text-amber-400" />
+        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+          <FileText className="h-4 w-4 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
           {renaming ? (
@@ -300,13 +300,13 @@ export default function ProjectCard({
                 }
               }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-transparent border-b border-amber-400 text-sm font-semibold outline-none w-full text-gray-100"
+              className="bg-transparent border-b border-primary text-sm font-semibold outline-none w-full text-foreground"
             />
           ) : (
-            <span className="text-sm font-semibold text-gray-100 truncate block">{project.name}</span>
+            <span className="text-sm font-semibold text-foreground truncate block">{project.name}</span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500 flex-shrink-0">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
           <span>{project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}</span>
           <span>{project.sceneCount} {project.sceneCount === 1 ? 'scene' : 'scenes'}</span>
           <Badge variant={statusConfig.variant} className="text-[10px]">
@@ -318,7 +318,7 @@ export default function ProjectCard({
               {GENRE_LABELS[project.genre] || project.genre}
             </Badge>
           )}
-          <span className="text-[11px] text-gray-600">
+          <span className="text-[11px] text-muted-foreground/60">
             {relativeTime(project.updatedAt)}
           </span>
         </div>
@@ -333,10 +333,10 @@ export default function ProjectCard({
   return (
     <div
       className={cn(
-        "group relative flex flex-col gap-4 rounded-lg border bg-gray-900 p-6 transition-all cursor-pointer min-h-[280px]",
+        "group relative flex flex-col gap-4 rounded-lg border bg-card p-6 transition-all cursor-pointer min-h-[280px]",
         isSelected
-          ? "border-amber-500 bg-amber-500/5"
-          : "border-gray-800 hover:-translate-y-0.5 hover:shadow-lg hover:border-gray-700"
+          ? "border-primary bg-primary/5"
+          : "border-border hover:-translate-y-0.5 hover:shadow-lg hover:border-border/80"
       )}
       onClick={() => {
         if (selectionMode && onSelectionChange) {
@@ -352,8 +352,8 @@ export default function ProjectCard({
           className={cn(
             "absolute top-3 left-3 w-5 h-5 rounded border-2 flex items-center justify-center transition-all z-10",
             isSelected
-              ? "bg-amber-500 border-amber-500 text-gray-950"
-              : "border-gray-700 bg-gray-900 hover:border-amber-500"
+              ? "bg-primary border-primary text-primary-foreground"
+              : "border-border bg-card hover:border-primary"
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -366,8 +366,8 @@ export default function ProjectCard({
       {/* Header: Icon + Title + Favorite + Menu */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-amber-500/10">
-            <FileText className="h-5 w-5 text-amber-400" />
+          <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10">
+            <FileText className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
             {renaming ? (
@@ -384,10 +384,10 @@ export default function ProjectCard({
                   }
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-transparent border-b border-amber-400 text-sm font-semibold outline-none w-full text-gray-100"
+                className="bg-transparent border-b border-primary text-sm font-semibold outline-none w-full text-foreground"
               />
             ) : (
-              <h3 className="text-sm font-semibold text-gray-100 truncate">{project.name}</h3>
+              <h3 className="text-sm font-semibold text-foreground truncate">{project.name}</h3>
             )}
           </div>
         </div>
@@ -400,8 +400,8 @@ export default function ProjectCard({
                 className={cn(
                   "p-1 rounded transition-all",
                   project.isFavorite
-                    ? "text-amber-400"
-                    : "text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400"
+                    ? "text-primary"
+                    : "text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-primary"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -419,7 +419,7 @@ export default function ProjectCard({
       {/* Body */}
       <div className="flex flex-col gap-3 flex-1">
         {/* Stats row */}
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}</span>
           <span className="opacity-50">&middot;</span>
           <span>{project.sceneCount} {project.sceneCount === 1 ? 'scene' : 'scenes'}</span>
@@ -428,10 +428,10 @@ export default function ProjectCard({
         {/* Script progress */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
               Script Progress
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}
             </span>
           </div>
@@ -451,8 +451,8 @@ export default function ProjectCard({
       </div>
 
       {/* Footer */}
-      <div className="pt-3 border-t border-gray-800">
-        <span className="text-[11px] text-gray-600">
+      <div className="pt-3 border-t border-border">
+        <span className="text-[11px] text-muted-foreground/60">
           Last edited: {relativeTime(project.updatedAt)}
         </span>
       </div>

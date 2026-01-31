@@ -11,10 +11,10 @@ export interface ProgressBarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const variantClasses: Record<string, string> = {
-  default: 'bg-success',
-  success: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
+  default: 'bg-success-500',
+  success: 'bg-success-500',
+  warning: 'bg-primary',
+  danger: 'bg-error-500',
 };
 
 const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
@@ -29,7 +29,7 @@ const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
         aria-valuemin={0}
         aria-valuemax={max}
         className={cn(
-          'w-full h-1.5 bg-surface rounded-full overflow-hidden relative',
+          'w-full h-1.5 bg-secondary rounded-full overflow-hidden relative',
           className
         )}
         {...props}

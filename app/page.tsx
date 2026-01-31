@@ -247,10 +247,10 @@ export default function HomePage() {
         <main className="flex-1 flex flex-col items-center px-8 py-12">
           {/* Hero Section */}
           <div className="flex flex-col items-center gap-4 mb-12">
-            <h1 className="text-display-md font-bold tracking-tight text-gray-100">
+            <h1 className="text-display-md font-bold tracking-tight text-foreground">
               {hasProjects ? 'Welcome Back' : 'Start Your First Screenplay'}
             </h1>
-            <p className="text-sm text-gray-500 max-w-md text-center">
+            <p className="text-sm text-muted-foreground max-w-md text-center">
               AI-powered screenplay IDE. Brainstorm, outline, draft, edit, and
               revise with real-time AI assistance.
             </p>
@@ -530,9 +530,9 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4 mt-4 text-center">
-              <div className="rounded-lg border-2 border-dashed border-gray-700 p-10 hover:border-amber-500/50 transition-colors">
-                <Upload className="h-8 w-8 text-gray-500 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">
+              <div className="rounded-lg border-2 border-dashed border-border p-10 hover:border-primary/50 transition-colors">
+                <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
                   Drop .fountain, .fdx, or .txt files here to import
                 </p>
               </div>
