@@ -43,32 +43,33 @@ interface BeatCardProps {
 
 /**
  * Determine a colour class for the INT/EXT badge.
- *   INT  -> green
- *   EXT  -> blue
- *   I/E or INT/EXT -> purple
+ * Uses design system scene badge colors:
+ *   INT  -> green (--badge-int-*)
+ *   EXT  -> blue (--badge-ext-*)
+ *   I/E or INT/EXT -> purple (--badge-mixed-*)
  */
 function getIntExtColor(intExt: string): string {
   switch (intExt) {
     case 'INT':
-      return 'bg-green-500/15 text-green-400 border-green-500/30';
+      return 'bg-[var(--badge-int-bg)] text-[var(--badge-int-text)] border-[var(--badge-int-border)]';
     case 'EXT':
-      return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
+      return 'bg-[var(--badge-ext-bg)] text-[var(--badge-ext-text)] border-[var(--badge-ext-border)]';
     default:
-      return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
+      return 'bg-[var(--badge-mixed-bg)] text-[var(--badge-mixed-text)] border-[var(--badge-mixed-border)]';
   }
 }
 
-/** Status badge colour mapping. */
+/** Status badge colour mapping using design system colors. */
 function getStatusColor(status: OutlineEntry['status']): string {
   switch (status) {
     case 'planned':
-      return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+      return 'bg-primary/15 text-primary border-primary/30';
     case 'drafted':
-      return 'bg-sky-500/15 text-sky-400 border-sky-500/30';
+      return 'bg-info-500/15 text-info-400 border-info-500/30';
     case 'revised':
-      return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+      return 'bg-success-500/15 text-success-400 border-success-500/30';
     case 'locked':
-      return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+      return 'bg-error-500/15 text-error-400 border-error-500/30';
   }
 }
 
@@ -129,20 +130,20 @@ export default function BeatCard({
       }}
       className={cn(
         'group w-full text-left rounded-lg border px-3 py-2.5 transition-all',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         isPlanned
-          ? 'border-dashed border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10'
-          : 'hover:bg-gray-800/50 hover:border-gray-700',
+          ? 'border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10'
+          : 'hover:bg-[var(--color-bg-hover)] hover:border-[rgba(251,191,36,0.3)]',
         isActive && !isPlanned
-          ? 'border-amber-500/50 bg-amber-500/5 shadow-sm'
+          ? 'border-[rgba(251,191,36,0.5)] bg-primary/5 shadow-sm'
           : !isPlanned
-            ? 'border-gray-800 bg-gray-900'
+            ? 'border-border bg-card'
             : '',
       )}
     >
       {/* Top row: scene number + INT/EXT badge + status */}
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-tiny font-mono text-gray-500">
+        <span className="text-tiny font-mono text-muted-foreground">
           {entry.sceneNumber ?? `#${sceneIndex + 1}`}
         </span>
         {entry.intExt && (
@@ -173,7 +174,7 @@ export default function BeatCard({
         {beatName && (
           <Badge
             variant="outline"
-            className="text-[10px] px-1.5 py-0 leading-4 font-medium ml-auto bg-amber-500/15 text-amber-400 border-amber-500/30 truncate max-w-[100px]"
+            className="text-[10px] px-1.5 py-0 leading-4 font-medium ml-auto bg-primary/15 text-primary border-primary/30 truncate max-w-[100px]"
             title={beatName}
           >
             {beatName}
@@ -185,7 +186,7 @@ export default function BeatCard({
       <div
         className={cn(
           'text-body-sm font-medium leading-tight truncate',
-          isPlanned ? 'text-gray-500 italic' : 'text-gray-100',
+          isPlanned ? 'text-muted-foreground italic' : 'text-foreground',
         )}
       >
         {entry.location || entry.heading || 'Untitled Scene'}
@@ -193,7 +194,7 @@ export default function BeatCard({
 
       {/* Time of day */}
       {entry.timeOfDay && (
-        <div className="text-caption text-gray-500 mt-0.5">
+        <div className="text-caption text-muted-foreground mt-0.5">
           {entry.timeOfDay}
         </div>
       )}
@@ -203,9 +204,9 @@ export default function BeatCard({
         <textarea
           ref={textareaRef}
           defaultValue={entry.summary}
-          className="w-full mt-1 text-caption bg-gray-800/50 border border-gray-700 rounded
-                     px-1.5 py-1 text-gray-100 resize-none focus:outline-none
-                     focus:ring-1 focus:ring-amber-400"
+          className="w-full mt-1 text-caption bg-input border border-border rounded
+                     px-1.5 py-1 text-foreground resize-none focus:outline-none
+                     focus:ring-1 focus:ring-primary"
           rows={3}
           onBlur={(e) => {
             onSummaryChange?.(e.target.value);
@@ -225,7 +226,7 @@ export default function BeatCard({
         />
       ) : entry.summary ? (
         <div
-          className="text-caption text-gray-500 mt-1 line-clamp-2 leading-snug cursor-text"
+          className="text-caption text-muted-foreground mt-1 line-clamp-2 leading-snug cursor-text"
           onDoubleClick={(e) => {
             e.stopPropagation();
             onEditRequest?.();
@@ -235,7 +236,7 @@ export default function BeatCard({
         </div>
       ) : (
         <div
-          className="text-caption text-gray-600 mt-1 italic cursor-text"
+          className="text-caption text-muted-foreground/60 mt-1 italic cursor-text"
           onDoubleClick={(e) => {
             e.stopPropagation();
             onEditRequest?.();
@@ -247,7 +248,7 @@ export default function BeatCard({
 
       {/* Metadata row: characters + page fraction (only for drafted scenes) */}
       {!isPlanned && (
-        <div className="flex items-center justify-between mt-2 text-[10px] text-gray-500">
+        <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
           <span>
             {characterCount} character{characterCount !== 1 ? 's' : ''}
           </span>
@@ -261,14 +262,14 @@ export default function BeatCard({
           {characters.slice(0, 4).map((name) => (
             <span
               key={name}
-              className="inline-flex items-center justify-center h-5 rounded-full bg-gray-800 px-1.5 text-[9px] font-medium text-gray-400 truncate max-w-[60px]"
+              className="inline-flex items-center justify-center h-5 rounded-full bg-secondary px-1.5 text-[9px] font-medium text-secondary-foreground truncate max-w-[60px]"
               title={name}
             >
               {name}
             </span>
           ))}
           {characterCount > 4 && (
-            <span className="text-[9px] text-gray-500">
+            <span className="text-[9px] text-muted-foreground">
               +{characterCount - 4}
             </span>
           )}
@@ -277,11 +278,11 @@ export default function BeatCard({
 
       {/* Scene length indicator bar (only for drafted scenes) */}
       {!isPlanned && (
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-gray-800">
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-secondary">
           <div
             className={cn(
               'h-full rounded-full transition-all',
-              isActive ? 'bg-amber-500/60' : 'bg-gray-600',
+              isActive ? 'bg-primary/60' : 'bg-muted-foreground/40',
             )}
             style={{ width: `${lengthPercent}%` }}
           />

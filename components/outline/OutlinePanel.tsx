@@ -274,14 +274,14 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
   return (
     <div
       className={cn(
-        'flex h-full flex-col bg-gray-900',
+        'flex h-full flex-col bg-[var(--color-bg-raised)]',
         className,
       )}
     >
       {/* Header with stats */}
-      <div className="shrink-0 p-3 border-b border-gray-800 space-y-2">
+      <div className="shrink-0 p-3 border-b border-border space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-100 flex items-center gap-1.5">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             <FileText className="h-4 w-4" />
             Outline
           </h2>
@@ -290,7 +290,7 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
               type="button"
               onClick={handleAddScene}
               className="flex items-center justify-center h-6 w-6 rounded-md
-                         text-gray-500 hover:text-gray-100 hover:bg-gray-800
+                         text-muted-foreground hover:text-foreground hover:bg-[var(--color-bg-hover)]
                          transition-colors"
             >
               <Plus className="h-4 w-4" />
@@ -299,7 +299,7 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
         </div>
 
         {/* Summary stats */}
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <FileText className="h-3 w-3" />
             <span>
@@ -314,7 +314,7 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
           </div>
           {plannedCount > 0 && (
             <div className="flex items-center gap-1">
-              <span className="text-amber-400">
+              <span className="text-primary">
                 {plannedCount} planned
               </span>
             </div>
@@ -337,10 +337,10 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
         >
           <ScrollArea className="flex-1 p-2">
             {entries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-sm text-gray-500 p-6">
+              <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground p-6">
                 <FileText className="h-8 w-8 mb-2 opacity-40" />
                 <p className="font-medium">No scenes found</p>
-                <p className="mt-1 text-xs text-gray-600">
+                <p className="mt-1 text-xs text-muted-foreground/70">
                   Add scene headings (INT./EXT.) to your screenplay to see them
                   listed here, or click + to add a planned scene.
                 </p>
@@ -368,8 +368,8 @@ export default function OutlinePanel({ className }: OutlinePanelProps) {
                           type="button"
                           onClick={() => toggleAct(actForEntry!.id)}
                           className="flex items-center gap-1.5 w-full px-1 py-1.5 text-[10px]
-                                     font-semibold text-gray-500 uppercase tracking-wider
-                                     hover:text-gray-100 transition-colors rounded"
+                                     font-semibold text-muted-foreground uppercase tracking-wider
+                                     hover:text-foreground transition-colors rounded"
                         >
                           <ChevronRight
                             className={cn(

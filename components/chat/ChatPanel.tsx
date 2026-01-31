@@ -677,15 +677,15 @@ export default function ChatPanel({ className }: ChatPanelProps) {
   return (
     <div
       className={cn(
-        'flex h-full flex-col bg-gray-900 border-l border-gray-800',
+        'flex h-full flex-col bg-[var(--color-bg-raised)] border-l border-border',
         className,
       )}
     >
       {/* Header: Mode indicator, voice selector, and context budget */}
-      <div className="shrink-0 space-y-2 p-3 border-b border-gray-800">
+      <div className="shrink-0 space-y-2 p-3 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-gray-100">AI Chat</h2>
+            <h2 className="text-sm font-semibold text-foreground">AI Chat</h2>
             <ModeIndicator />
           </div>
           <div className="flex items-center gap-1">
@@ -696,7 +696,7 @@ export default function ChatPanel({ className }: ChatPanelProps) {
               variant="ghost"
               size="icon"
               onClick={handleClear}
-              className="h-7 w-7 text-gray-500 hover:text-gray-100"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
               aria-label="Clear chat"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -707,15 +707,15 @@ export default function ChatPanel({ className }: ChatPanelProps) {
       </div>
 
       {/* Chat session list */}
-      <ChatSessionList className="border-b border-gray-800" />
+      <ChatSessionList className="border-b border-border" />
 
       {/* Messages area */}
       <ScrollArea className="flex-1 p-3">
         {messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-center text-sm text-gray-500 p-6">
+          <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground p-6">
             <div>
               <p className="font-medium">No messages yet</p>
-              <p className="mt-1 text-xs text-gray-600">
+              <p className="mt-1 text-xs text-muted-foreground/70">
                 Ask the AI to help with your screenplay. It can edit scenes,
                 suggest dialogue, analyze structure, and more.
               </p>
@@ -798,7 +798,7 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
         {/* Compacting indicator */}
         {isCompacting && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
             <span>Compacting context...</span>
           </div>
@@ -806,8 +806,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
         {/* Streaming indicator */}
         {isStreaming && !isCompacting && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
             <span>AI is responding...</span>
           </div>
         )}
