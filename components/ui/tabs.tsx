@@ -39,7 +39,7 @@ function Tabs({
   return (
     <div className={cn('flex flex-col h-full', className)} {...props}>
       <div
-        className="flex border-b border-border bg-surface"
+        className="flex border-b border-gray-800 bg-gray-900/50"
         role="tablist"
       >
         {tabs.map((tab) => (
@@ -50,13 +50,13 @@ function Tabs({
             aria-controls={`tabpanel-${tab.id}`}
             onClick={() => handleTabChange(tab.id)}
             className={cn(
-              'inline-flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent transition-all duration-normal cursor-pointer',
-              'text-muted-foreground',
-              'hover:text-foreground hover:bg-white/[0.03]',
-              'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_hsl(var(--primary))]',
+              'inline-flex items-center gap-2 px-3 py-2 text-caption font-medium',
+              'border-b-2 border-transparent transition-all duration-150',
+              'text-gray-500 hover:text-gray-100',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
               'disabled:pointer-events-none disabled:opacity-50',
               activeTab === tab.id
-                ? 'text-primary border-b-primary'
+                ? 'text-gray-100 border-b-amber-400'
                 : ''
             )}
           >

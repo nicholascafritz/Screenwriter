@@ -5,29 +5,32 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-ui text-sm font-medium transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 disabled:transform-none',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-white shadow-sm hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)]',
+          'bg-amber-500 text-gray-950 shadow-sm hover:bg-amber-400 active:bg-amber-600 active:scale-[0.98] focus-visible:ring-amber-400',
         secondary:
-          'bg-secondary text-foreground border border-border hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-strong)]',
+          'bg-gray-800 text-gray-100 hover:bg-gray-700 active:bg-gray-750 focus-visible:ring-gray-600',
         destructive:
-          'bg-[var(--color-danger)] text-white shadow-sm hover:bg-[var(--color-danger-hover)]',
+          'bg-red-600 text-white shadow-sm hover:bg-red-500 active:bg-red-700 focus-visible:ring-red-500',
         success:
-          'bg-[var(--color-success)] text-white shadow-sm hover:bg-[var(--color-success-hover)]',
+          'bg-green-600 text-white shadow-sm hover:bg-green-500 active:bg-green-700 focus-visible:ring-green-500',
         outline:
-          'border border-border bg-transparent hover:bg-secondary hover:border-[var(--color-border-strong)]',
+          'border border-gray-700 bg-transparent text-gray-100 hover:bg-gray-800 hover:border-gray-600 focus-visible:ring-gray-600',
         ghost:
-          'text-muted-foreground hover:bg-secondary hover:text-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+          'text-gray-400 hover:bg-gray-800 hover:text-gray-100 focus-visible:ring-gray-600',
+        link:
+          'text-amber-400 underline-offset-4 hover:underline hover:text-amber-300',
       },
       size: {
-        default: 'h-9 px-4 py-3',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-10 rounded-md px-6 text-base',
-        icon: 'h-9 w-9 p-2',
+        default: 'h-9 px-3.5 text-body-sm',
+        sm: 'h-7 px-2.5 text-xs rounded',
+        lg: 'h-11 px-4.5 text-body',
+        icon: 'h-9 w-9',
+        'icon-sm': 'h-7 w-7 rounded',
+        'icon-lg': 'h-11 w-11',
       },
     },
     defaultVariants: {

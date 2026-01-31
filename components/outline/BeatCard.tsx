@@ -129,20 +129,20 @@ export default function BeatCard({
       }}
       className={cn(
         'group w-full text-left rounded-lg border px-3 py-2.5 transition-all',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
         isPlanned
           ? 'border-dashed border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10'
-          : 'hover:bg-accent/50 hover:border-accent-foreground/20',
+          : 'hover:bg-gray-800/50 hover:border-gray-700',
         isActive && !isPlanned
-          ? 'border-primary/50 bg-primary/5 shadow-sm'
+          ? 'border-amber-500/50 bg-amber-500/5 shadow-sm'
           : !isPlanned
-            ? 'border-border bg-card'
+            ? 'border-gray-800 bg-gray-900'
             : '',
       )}
     >
       {/* Top row: scene number + INT/EXT badge + status */}
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-[10px] font-mono text-muted-foreground">
+        <span className="text-tiny font-mono text-gray-500">
           {entry.sceneNumber ?? `#${sceneIndex + 1}`}
         </span>
         {entry.intExt && (
@@ -184,8 +184,8 @@ export default function BeatCard({
       {/* Location name */}
       <div
         className={cn(
-          'text-sm font-medium leading-tight truncate',
-          isPlanned ? 'text-muted-foreground italic' : 'text-foreground',
+          'text-body-sm font-medium leading-tight truncate',
+          isPlanned ? 'text-gray-500 italic' : 'text-gray-100',
         )}
       >
         {entry.location || entry.heading || 'Untitled Scene'}
@@ -193,7 +193,7 @@ export default function BeatCard({
 
       {/* Time of day */}
       {entry.timeOfDay && (
-        <div className="text-xs text-muted-foreground mt-0.5">
+        <div className="text-caption text-gray-500 mt-0.5">
           {entry.timeOfDay}
         </div>
       )}
@@ -203,9 +203,9 @@ export default function BeatCard({
         <textarea
           ref={textareaRef}
           defaultValue={entry.summary}
-          className="w-full mt-1 text-xs bg-transparent border border-border rounded
-                     px-1.5 py-1 text-foreground resize-none focus:outline-none
-                     focus:ring-1 focus:ring-ring"
+          className="w-full mt-1 text-caption bg-gray-800/50 border border-gray-700 rounded
+                     px-1.5 py-1 text-gray-100 resize-none focus:outline-none
+                     focus:ring-1 focus:ring-amber-400"
           rows={3}
           onBlur={(e) => {
             onSummaryChange?.(e.target.value);
@@ -225,7 +225,7 @@ export default function BeatCard({
         />
       ) : entry.summary ? (
         <div
-          className="text-xs text-muted-foreground/70 mt-1 line-clamp-2 leading-snug cursor-text"
+          className="text-caption text-gray-500 mt-1 line-clamp-2 leading-snug cursor-text"
           onDoubleClick={(e) => {
             e.stopPropagation();
             onEditRequest?.();
@@ -235,7 +235,7 @@ export default function BeatCard({
         </div>
       ) : (
         <div
-          className="text-xs text-muted-foreground/40 mt-1 italic cursor-text"
+          className="text-caption text-gray-600 mt-1 italic cursor-text"
           onDoubleClick={(e) => {
             e.stopPropagation();
             onEditRequest?.();
@@ -247,7 +247,7 @@ export default function BeatCard({
 
       {/* Metadata row: characters + page fraction (only for drafted scenes) */}
       {!isPlanned && (
-        <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between mt-2 text-[10px] text-gray-500">
           <span>
             {characterCount} character{characterCount !== 1 ? 's' : ''}
           </span>
@@ -261,14 +261,14 @@ export default function BeatCard({
           {characters.slice(0, 4).map((name) => (
             <span
               key={name}
-              className="inline-flex items-center justify-center h-5 rounded-full bg-muted px-1.5 text-[9px] font-medium text-muted-foreground truncate max-w-[60px]"
+              className="inline-flex items-center justify-center h-5 rounded-full bg-gray-800 px-1.5 text-[9px] font-medium text-gray-400 truncate max-w-[60px]"
               title={name}
             >
               {name}
             </span>
           ))}
           {characterCount > 4 && (
-            <span className="text-[9px] text-muted-foreground">
+            <span className="text-[9px] text-gray-500">
               +{characterCount - 4}
             </span>
           )}
@@ -277,11 +277,11 @@ export default function BeatCard({
 
       {/* Scene length indicator bar (only for drafted scenes) */}
       {!isPlanned && (
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-secondary/50">
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-gray-800">
           <div
             className={cn(
               'h-full rounded-full transition-all',
-              isActive ? 'bg-primary/60' : 'bg-muted-foreground/30',
+              isActive ? 'bg-amber-500/60' : 'bg-gray-600',
             )}
             style={{ width: `${lengthPercent}%` }}
           />

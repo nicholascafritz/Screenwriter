@@ -5,27 +5,46 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium leading-none whitespace-nowrap transition-colors',
+  'inline-flex items-center rounded px-2 h-5 text-micro font-semibold whitespace-nowrap transition-colors',
   {
     variants: {
       variant: {
         default:
-          'bg-primary/10 text-primary border border-primary/20',
+          'bg-amber-500 text-gray-950',
         secondary:
-          'bg-secondary text-secondary-foreground border border-border',
-        outline: 'text-foreground border border-border',
-        destructive:
-          'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/20',
-        status:
-          'bg-[var(--color-info-bg)] text-[var(--color-info)] border border-[var(--color-info)]/20',
+          'bg-gray-800 text-gray-400',
+        outline:
+          'border border-gray-700 text-gray-100 bg-transparent',
         success:
-          'bg-[var(--color-success-bg)] text-[var(--color-success)] border border-[var(--color-success)]/20',
+          'bg-green-500/15 text-green-400 border border-green-500/30',
         warning:
-          'bg-[var(--color-warning-bg)] text-[var(--color-warning)] border border-[var(--color-warning)]/20',
-        danger:
-          'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/20',
+          'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+        error:
+          'bg-red-500/15 text-red-400 border border-red-500/30',
         info:
-          'bg-muted text-muted-foreground border border-border',
+          'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+        destructive:
+          'bg-red-500/15 text-red-400 border border-red-500/30',
+        danger:
+          'bg-red-500/15 text-red-400 border border-red-500/30',
+        status:
+          'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+        // Scene-specific badges
+        int:
+          'bg-green-500/15 text-green-400 border border-green-500/30',
+        ext:
+          'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+        mixed:
+          'bg-purple-500/15 text-purple-400 border border-purple-500/30',
+        // Mode badges
+        'mode-inline':
+          'bg-green-500/15 text-green-400 border border-green-500/30',
+        'mode-diff':
+          'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+        'mode-agent':
+          'bg-teal-500/15 text-teal-400 border border-teal-500/30',
+        'mode-writers-room':
+          'bg-amber-500/15 text-amber-400 border border-amber-500/30',
       },
     },
     defaultVariants: {

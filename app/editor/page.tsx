@@ -352,7 +352,7 @@ export default function EditorPage() {
     <FileDropZone onFiles={handleDropFiles} className="h-screen">
       <div className="flex h-screen flex-col bg-background">
         {/* Top Bar */}
-        <header className="flex h-12 items-center justify-between border-b border-border bg-surface px-4 flex-shrink-0">
+        <header className="flex h-12 items-center justify-between border-b border-gray-800 bg-gray-900/50 px-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -362,7 +362,7 @@ export default function EditorPage() {
               className="flex items-center gap-1 hover:opacity-80 transition-opacity"
               title="Back to projects"
             >
-              <Clapperboard className="h-5 w-5 text-primary" />
+              <Clapperboard className="h-5 w-5 text-amber-400" />
             </button>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-foreground">
@@ -379,7 +379,7 @@ export default function EditorPage() {
 
           <div className="flex items-center gap-2">
             {/* View mode toggle */}
-            <div className="flex items-center rounded-md border border-border bg-background p-0.5">
+            <div className="flex items-center rounded-md border border-gray-700 bg-gray-900 p-0.5">
               <Tooltip content="Code Editor (Cmd+\)">
                 <Button
                   variant={viewMode === 'editor' ? 'secondary' : 'ghost'}
@@ -491,16 +491,16 @@ export default function EditorPage() {
           {showOutline && (
             <>
               <div
-                className="flex-shrink-0 border-r border-border overflow-hidden flex flex-col"
+                className="flex-shrink-0 border-r border-gray-800 overflow-hidden flex flex-col bg-gray-900"
                 style={{ width: outlineWidth }}
               >
                 {/* Tab bar */}
-                <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border shrink-0">
+                <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-800 bg-gray-900/30 shrink-0">
                   <button
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
                       leftPanelTab === 'outline'
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-gray-800 text-gray-100'
+                        : 'text-gray-500 hover:text-gray-100'
                     }`}
                     onClick={() => setLeftPanelTab('outline')}
                   >
@@ -510,8 +510,8 @@ export default function EditorPage() {
                   <button
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
                       leftPanelTab === 'history'
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-gray-800 text-gray-100'
+                        : 'text-gray-500 hover:text-gray-100'
                     }`}
                     onClick={() => setLeftPanelTab('history')}
                   >
@@ -521,15 +521,15 @@ export default function EditorPage() {
                   <button
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
                       leftPanelTab === 'comments'
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-gray-800 text-gray-100'
+                        : 'text-gray-500 hover:text-gray-100'
                     }`}
                     onClick={() => setLeftPanelTab('comments')}
                   >
                     <MessageSquare className="h-3 w-3" />
                     Notes
                     {activeCommentCount > 0 && (
-                      <span className="ml-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground px-1">
+                      <span className="ml-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 text-[9px] text-gray-950 px-1">
                         {activeCommentCount}
                       </span>
                     )}
@@ -537,8 +537,8 @@ export default function EditorPage() {
                   <button
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
                       leftPanelTab === 'bible'
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-gray-800 text-gray-100'
+                        : 'text-gray-500 hover:text-gray-100'
                     }`}
                     onClick={() => setLeftPanelTab('bible')}
                   >
@@ -610,7 +610,7 @@ export default function EditorPage() {
                 onMouseDown={(e) => handleMouseDown('chat', e)}
               />
               <div
-                className="flex-shrink-0 border-l border-border overflow-hidden"
+                className="flex-shrink-0 border-l border-gray-800 overflow-hidden"
                 style={{ width: chatWidth }}
               >
                 <ChatPanel className="h-full" />
@@ -620,23 +620,23 @@ export default function EditorPage() {
         </div>
 
         {/* Status Bar */}
-        <footer className="flex h-7 items-center justify-between border-t border-border px-3 text-xs text-muted-foreground flex-shrink-0">
+        <footer className="flex h-7 items-center justify-between border-t border-gray-800 bg-gray-950 px-3 text-caption text-gray-500 flex-shrink-0">
           <div className="flex items-center gap-3">
             <span>{pageCount} {pageCount === 1 ? 'page' : 'pages'}</span>
-            <span className="text-border">|</span>
+            <span className="text-gray-700">|</span>
             <span>{sceneCount} {sceneCount === 1 ? 'scene' : 'scenes'}</span>
-            <span className="text-border">|</span>
+            <span className="text-gray-700">|</span>
             <span>{characterCount} {characterCount === 1 ? 'character' : 'characters'}</span>
             {activeCommentCount > 0 && (
               <>
-                <span className="text-border">|</span>
+                <span className="text-gray-700">|</span>
                 <span>{activeCommentCount} {activeCommentCount === 1 ? 'note' : 'notes'}</span>
               </>
             )}
             {currentScene && (
               <>
-                <span className="text-border">|</span>
-                <span className="text-foreground/70 truncate max-w-[200px]">
+                <span className="text-gray-700">|</span>
+                <span className="text-gray-400 truncate max-w-[200px]">
                   {currentScene}
                 </span>
               </>
@@ -644,14 +644,14 @@ export default function EditorPage() {
           </div>
           <div className="flex items-center gap-3">
             {isAIActive && (
-              <span className="text-primary text-[10px] font-medium animate-pulse">
+              <span className="text-amber-400 text-tiny font-medium ai-active-pulse">
                 AI editing...
               </span>
             )}
-            <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+            <Badge variant="outline" className="text-tiny h-5 px-1.5">
               {TRUST_LEVEL_CONFIG[trustLevel].label}
             </Badge>
-            <span>Fountain</span>
+            <span className="text-gray-600">Fountain</span>
           </div>
         </footer>
       </div>

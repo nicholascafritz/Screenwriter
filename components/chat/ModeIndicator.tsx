@@ -40,7 +40,7 @@ const MODES: ModeConfig[] = [
     shortLabel: 'Brainstorm',
     description: 'Discuss and plan ideas (read-only)',
     icon: Lightbulb,
-    color: 'text-amber-500',
+    color: 'text-amber-400',
   },
   {
     id: 'diff',
@@ -48,7 +48,7 @@ const MODES: ModeConfig[] = [
     shortLabel: 'Ask',
     description: 'Propose changes for your review',
     icon: MessageCircleQuestion,
-    color: 'text-blue-500',
+    color: 'text-blue-400',
   },
   {
     id: 'inline',
@@ -56,7 +56,7 @@ const MODES: ModeConfig[] = [
     shortLabel: 'Write',
     description: 'Make changes directly',
     icon: Pencil,
-    color: 'text-green-500',
+    color: 'text-green-400',
   },
 ];
 
@@ -117,21 +117,21 @@ export default function ModeIndicator({ className }: ModeIndicatorProps) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs',
+          'flex items-center gap-1.5 px-2 py-1 rounded-md text-caption',
           'transition-colors duration-150',
-          'hover:bg-muted/80',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-          isOpen && 'bg-muted'
+          'hover:bg-gray-800',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
+          isOpen && 'bg-gray-800'
         )}
         aria-label={`Current mode: ${currentMode.label}. Click to change.`}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
         <Icon className={cn('h-3.5 w-3.5', currentMode.color)} />
-        <span className="font-medium text-foreground">{currentMode.shortLabel}</span>
+        <span className="font-medium text-gray-100">{currentMode.shortLabel}</span>
         <ChevronDown
           className={cn(
-            'h-3 w-3 text-muted-foreground transition-transform duration-150',
+            'h-3 w-3 text-gray-500 transition-transform duration-150',
             isOpen && 'rotate-180'
           )}
         />
@@ -144,8 +144,9 @@ export default function ModeIndicator({ className }: ModeIndicatorProps) {
           aria-label="Select AI mode"
           className={cn(
             'absolute left-0 top-full mt-1 z-50',
-            'w-56 rounded-lg border border-border bg-popover p-1 shadow-lg',
-            'animate-in fade-in-0 zoom-in-95 duration-100'
+            'w-56 rounded-lg border border-gray-700 bg-gray-900/95 backdrop-blur-sm p-1',
+            'shadow-lg shadow-black/30',
+            'animate-dropdown-in'
           )}
         >
           {MODES.map((modeOption) => {
@@ -162,22 +163,22 @@ export default function ModeIndicator({ className }: ModeIndicatorProps) {
                 className={cn(
                   'flex items-start gap-2.5 w-full px-2.5 py-2 rounded-md text-left',
                   'transition-colors duration-100',
-                  'hover:bg-muted',
-                  'focus-visible:outline-none focus-visible:bg-muted',
-                  isSelected && 'bg-muted/50'
+                  'hover:bg-gray-800',
+                  'focus-visible:outline-none focus-visible:bg-gray-800',
+                  isSelected && 'bg-gray-800/50'
                 )}
               >
                 <ModeIcon className={cn('h-4 w-4 mt-0.5 shrink-0', modeOption.color)} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-body-sm font-medium text-gray-100">
                       {modeOption.label}
                     </span>
                     {isSelected && (
-                      <Check className="h-3.5 w-3.5 text-primary" />
+                      <Check className="h-3.5 w-3.5 text-amber-400" />
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-caption text-gray-500 mt-0.5">
                     {modeOption.description}
                   </p>
                 </div>
@@ -186,8 +187,8 @@ export default function ModeIndicator({ className }: ModeIndicatorProps) {
           })}
 
           {/* Hint */}
-          <div className="border-t border-border mt-1 pt-1.5 px-2.5 pb-1">
-            <p className="text-[10px] text-muted-foreground">
+          <div className="border-t border-gray-700 mt-1 pt-1.5 px-2.5 pb-1">
+            <p className="text-tiny text-gray-500">
               Tip: Type /brainstorm, /ask, or /write to switch
             </p>
           </div>
