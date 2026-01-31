@@ -39,7 +39,7 @@ function Tabs({
   return (
     <div className={cn('flex flex-col h-full', className)} {...props}>
       <div
-        className="flex border-b border-gray-800 bg-gray-900/50"
+        className="flex border-b border-border bg-card/50"
         role="tablist"
       >
         {tabs.map((tab) => (
@@ -52,11 +52,11 @@ function Tabs({
             className={cn(
               'inline-flex items-center gap-2 px-3 py-2 text-caption font-medium',
               'border-b-2 border-transparent transition-all duration-150',
-              'text-gray-500 hover:text-gray-100',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
+              'text-muted-foreground hover:text-foreground',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               'disabled:pointer-events-none disabled:opacity-50',
               activeTab === tab.id
-                ? 'text-gray-100 border-b-amber-400'
+                ? 'text-foreground border-b-primary'
                 : ''
             )}
           >

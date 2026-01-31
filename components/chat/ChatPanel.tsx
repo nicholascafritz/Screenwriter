@@ -751,14 +751,14 @@ export default function ChatPanel({ className }: ChatPanelProps) {
 
         {/* Pending proposal indicator (Ask mode) */}
         {pendingProposal && (
-          <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs text-blue-400">
+          <div className="rounded-lg border p-3 space-y-2" style={{ borderColor: 'var(--color-mode-diff, #3B82F6)', backgroundColor: 'color-mix(in srgb, var(--color-mode-diff, #3B82F6) 10%, transparent)' }}>
+            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-mode-diff, #3B82F6)' }}>
               <GitCompare className="h-3.5 w-3.5" />
               <span className="font-medium">
                 Changes proposed{pendingProposalDescription ? `: ${pendingProposalDescription}` : ''}
               </span>
             </div>
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-muted-foreground">
               Review the diff in the editor panel, then accept or reject.
             </p>
             <div className="flex gap-2">
@@ -766,7 +766,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
                 variant="outline"
                 size="sm"
                 onClick={rejectPendingProposal}
-                className="flex-1 gap-1 h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                className="flex-1 gap-1 h-7 text-xs hover:bg-destructive/10"
+                style={{ borderColor: 'color-mix(in srgb, var(--color-danger, #EF4444) 30%, transparent)', color: 'var(--color-danger, #EF4444)' }}
               >
                 <X className="h-3 w-3" />
                 Reject
@@ -774,7 +775,8 @@ export default function ChatPanel({ className }: ChatPanelProps) {
               <Button
                 size="sm"
                 onClick={acceptPendingProposal}
-                className="flex-1 gap-1 h-7 text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                className="flex-1 gap-1 h-7 text-xs text-white"
+                style={{ backgroundColor: 'var(--color-mode-diff, #3B82F6)' }}
               >
                 <Check className="h-3 w-3" />
                 Accept

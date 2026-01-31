@@ -127,7 +127,7 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         role="menu"
         className={cn(
           'absolute top-full mt-1 z-50 min-w-[180px]',
-          'rounded-lg border border-gray-700 bg-gray-900/95 backdrop-blur-sm',
+          'rounded-lg border border-border bg-popover/95 backdrop-blur-sm',
           'p-1 shadow-lg shadow-black/30',
           'animate-dropdown-in',
           alignClass,
@@ -161,8 +161,8 @@ const DropdownMenuItem = React.forwardRef<HTMLButtonElement, DropdownMenuItemPro
         type="button"
         className={cn(
           'relative flex w-full cursor-pointer select-none items-center gap-2',
-          'rounded px-2 py-1.5 text-body-sm text-gray-100 outline-none',
-          'hover:bg-gray-800 focus:bg-gray-800',
+          'rounded px-2 py-1.5 text-body-sm text-foreground outline-none',
+          'hover:bg-accent focus:bg-accent',
           'disabled:pointer-events-none disabled:opacity-50',
           inset && 'pl-8',
           className,
@@ -183,7 +183,7 @@ DropdownMenuItem.displayName = 'DropdownMenuItem';
 // ---------------------------------------------------------------------------
 
 function DropdownMenuSeparator({ className }: { className?: string }) {
-  return <div role="separator" className={cn('-mx-1 my-1 h-px bg-gray-700', className)} />;
+  return <div role="separator" className={cn('-mx-1 my-1 h-px bg-border', className)} />;
 }
 
 // ---------------------------------------------------------------------------
