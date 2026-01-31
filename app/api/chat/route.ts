@@ -25,11 +25,20 @@ import Anthropic from '@anthropic-ai/sdk';
 // Allow longer execution for writers-room mode (many sequential tool calls).
 export const maxDuration = 120;
 import { buildSystemPrompt, buildGuideSystemPrompt } from '@/lib/agent/prompts';
-import { executeToolCall, getToolsForMode } from '@/lib/agent/tools';
+import { executeToolCall, executeToolCallWithVoice, getToolsForMode } from '@/lib/agent/tools';
 import { getVoiceById, PRESET_VOICES, type VoiceProfile } from '@/lib/agent/voices';
 import { computePatch } from '@/lib/diff/patch-transport';
 import { buildModelParams, type ModelConfig } from '@/lib/ai/models';
 import { chatModeToTask, getModelForTask } from '@/lib/ai/model-router';
+import { classifyIntent, type DispatchResult } from '@/lib/agent/dispatcher';
+import {
+  shouldInjectReinforcement,
+  getVoiceReinforcement,
+  formatReinforcementForInjection,
+  buildToolContextReinforcement,
+  detectPotentialDrift,
+  type ReinforcementContext,
+} from '@/lib/agent/voice-reinforcement';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,6 +62,8 @@ interface ChatRequestBody {
     logline?: string;
     notes?: string;
   };
+  /** Project ID for context generation. */
+  projectId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +113,21 @@ export async function POST(request: NextRequest) {
     // Priority: full voice object > voiceId lookup > default preset
     const voice = bodyVoice ?? (voiceId ? getVoiceById(voiceId) : undefined) ?? PRESET_VOICES[0];
 
+    // Classify the user's intent for dispatcher-based prompt routing.
+    const dispatchResult = classifyIntent(message);
+
+    // Calculate conversation turn count from history.
+    const turnCount = Math.floor((history?.length ?? 0) / 2) + 1;
+
+    // Determine if voice reinforcement should be injected.
+    const reinforcementContext: ReinforcementContext = {
+      voice,
+      intentCategory: dispatchResult.category,
+      turnCount,
+      lastResponseHadContent: false, // Will be updated in the loop
+    };
+    const shouldReinforce = shouldInjectReinforcement(reinforcementContext);
+
     // Build the system prompt (guide mode uses a separate prompt builder).
     const resolvedModeForPrompt = mode ?? 'inline';
     const systemPrompt = resolvedModeForPrompt === 'story-guide'
@@ -112,7 +138,16 @@ export async function POST(request: NextRequest) {
           screenplay,
           cursorScene,
           selection,
+          projectId: body.projectId,
+          dispatchResult, // Pass intent classification to prompt builder
         });
+
+    // If reinforcement is needed, prepend it to the user message.
+    let augmentedMessage = message;
+    if (shouldReinforce && resolvedModeForPrompt !== 'story-guide') {
+      const reinforcement = getVoiceReinforcement(reinforcementContext);
+      augmentedMessage = formatReinforcementForInjection(reinforcement) + message;
+    }
 
     // Initialise the Anthropic client with explicit API key from env.
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -136,7 +171,7 @@ export async function POST(request: NextRequest) {
 
     const messages: Anthropic.MessageParam[] = [
       ...filteredHistory,
-      { role: 'user', content: message },
+      { role: 'user', content: augmentedMessage },
     ];
 
     // Route to the optimal model for this chat mode.
@@ -173,6 +208,7 @@ export async function POST(request: NextRequest) {
             resolvedMode,
             modelConfig,
             iterationLimit,
+            voice, // Pass voice for tool context injection
           );
 
           // Signal completion.
@@ -233,6 +269,7 @@ async function runConversationLoop(
   mode: string,
   modelConfig: ModelConfig,
   maxIterations = 30,
+  voice?: VoiceProfile,
 ): Promise<string> {
   let currentScreenplay = screenplay;
 
@@ -296,15 +333,35 @@ async function runConversationLoop(
       );
 
       // Execute the tool against the current screenplay.
-      const toolResult = executeToolCall(
-        toolBlock.name,
-        toolBlock.input as Record<string, unknown>,
-        currentScreenplay,
-      );
+      // Use voice-enhanced execution for non-guide modes to inject voice context.
+      const toolResult = voice && mode !== 'story-guide'
+        ? executeToolCallWithVoice(
+            toolBlock.name,
+            toolBlock.input as Record<string, unknown>,
+            currentScreenplay,
+            voice,
+          )
+        : executeToolCall(
+            toolBlock.name,
+            toolBlock.input as Record<string, unknown>,
+            currentScreenplay,
+          );
+
+      // Track voice drift warning (only set for mutating tools)
+      let driftWarning = '';
 
       // Update screenplay state if the tool mutated it.
       if (toolResult.updatedScreenplay) {
         const patch = computePatch(currentScreenplay, toolResult.updatedScreenplay);
+
+        // Check for voice drift in the new content (for writing tools)
+        if (voice && mode !== 'story-guide') {
+          const driftResult = detectPotentialDrift(toolResult.updatedScreenplay, voice);
+          if (driftResult.drifted) {
+            driftWarning = `\n\n<voice-drift-warning>Potential voice drift detected: ${driftResult.signals.join('; ')}. Re-center on ${voice.name} voice.</voice-drift-warning>`;
+          }
+        }
+
         currentScreenplay = toolResult.updatedScreenplay;
 
         // Send compact patch alongside full text (backward compat).
@@ -328,10 +385,11 @@ async function runConversationLoop(
       }
 
       // Collect the tool result for the next API call.
+      // Include drift warning if detected so model can self-correct.
       toolResultContents.push({
         type: 'tool_result',
         tool_use_id: toolBlock.id,
-        content: toolResult.result,
+        content: toolResult.result + (driftWarning ?? ''),
       });
     }
 

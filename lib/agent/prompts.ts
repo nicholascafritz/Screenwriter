@@ -26,6 +26,8 @@ import { useGuidedWritingStore, type SceneContext } from '@/lib/store/guided-wri
 import { TURNING_POINT_NORMS, BEAT_TO_TP_MAP } from '@/lib/tripod/reference-data';
 import { generateScreenplaySummary, formatSummaryForPrompt } from '@/lib/context/screenplay-summary';
 import { formatCompactionResultForContext, type CompactionResult } from '@/lib/context/chat-compaction';
+import { type DispatchResult } from './dispatcher';
+import { buildCategoryPrompt } from './category-prompts';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +54,9 @@ export interface SystemPromptParams {
 
   /** Compaction result from previous chat history, if any. */
   compactionResult?: CompactionResult | null;
+
+  /** Intent classification result from the dispatcher. */
+  dispatchResult?: DispatchResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +87,17 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
   sections.push(buildVoicePrompt(params.voice));
   sections.push(buildVoiceSamplesPrompt(params.voice.id));
   sections.push(buildTransformationSamplesPrompt(params.voice.id));
+
+  // Add category-specific prompt section if dispatcher result is available
+  // This provides intent-aware voice reinforcement and task guidance
+  if (params.dispatchResult) {
+    sections.push(buildCategoryPrompt(
+      params.dispatchResult.category,
+      params.dispatchResult.subIntent,
+      params.voice,
+    ));
+  }
+
   sections.push(buildModeInstructions(params.mode));
   sections.push(buildModeTransitionSection(params.mode));
   sections.push(buildModeExamples(params.mode));

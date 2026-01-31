@@ -32,6 +32,8 @@ import {
   type DistinctiveFeature,
   type AnalysisSummary,
 } from './dialogue-types';
+import type { VoiceProfile } from './voices';
+import { buildToolContextReinforcement } from './voice-reinforcement';
 
 // ---------------------------------------------------------------------------
 // Tool result type
@@ -462,6 +464,77 @@ export function executeToolCall(
     default:
       return { result: `Unknown tool: ${name}` };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Voice-enhanced tool execution
+// ---------------------------------------------------------------------------
+
+/**
+ * Tools that read content the model will likely write based on.
+ * These get voice context injected into their results.
+ */
+const VOICE_CONTEXT_TOOLS = new Set([
+  'read_scene',
+  'read_screenplay',
+  'search_screenplay',
+  'get_outline',
+  'read_act',
+]);
+
+/**
+ * Tools that mutate the screenplay and should trigger voice reminder.
+ */
+const WRITING_TOOLS = new Set([
+  'edit_scene',
+  'insert_scene',
+  'replace_text',
+]);
+
+/**
+ * Execute a tool call with voice context injection.
+ *
+ * This wrapper adds voice reinforcement to tool results that precede
+ * writing operations, helping maintain voice consistency.
+ *
+ * @param name - The tool name.
+ * @param input - The tool input parameters.
+ * @param screenplay - The current Fountain screenplay text.
+ * @param voice - Optional voice profile for context injection.
+ * @returns A result with voice context when appropriate.
+ */
+export function executeToolCallWithVoice(
+  name: string,
+  input: Record<string, unknown>,
+  screenplay: string,
+  voice?: VoiceProfile,
+): ToolResult {
+  // Execute the base tool call
+  const result = executeToolCall(name, input, screenplay);
+
+  // If no voice provided or tool doesn't benefit from voice context, return as-is
+  if (!voice) {
+    return result;
+  }
+
+  // Inject voice context for read tools (content the model will likely act on)
+  if (VOICE_CONTEXT_TOOLS.has(name)) {
+    const voiceContext = buildToolContextReinforcement(voice);
+    return {
+      ...result,
+      result: `${result.result}\n\n${voiceContext}`,
+    };
+  }
+
+  // For writing tools, add a post-write voice reminder
+  if (WRITING_TOOLS.has(name) && result.updatedScreenplay) {
+    return {
+      ...result,
+      result: `${result.result}\n\n<voice-reminder>Content written. Maintain ${voice.name} voice for any follow-up edits.</voice-reminder>`,
+    };
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------
