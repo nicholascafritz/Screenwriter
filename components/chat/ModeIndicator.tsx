@@ -48,7 +48,7 @@ const MODES: ModeConfig[] = [
     shortLabel: 'Ask',
     description: 'Propose changes for your review',
     icon: MessageCircleQuestion,
-    color: 'text-info-400', // blue - diff mode
+    color: 'text-[var(--color-info)]', // blue - diff mode
   },
   {
     id: 'inline',
@@ -56,7 +56,7 @@ const MODES: ModeConfig[] = [
     shortLabel: 'Write',
     description: 'Make changes directly',
     icon: Pencil,
-    color: 'text-success-400', // green - inline mode
+    color: 'text-[var(--color-success)]', // green - inline mode
   },
 ];
 

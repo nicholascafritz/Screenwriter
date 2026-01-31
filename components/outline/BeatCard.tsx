@@ -65,11 +65,11 @@ function getStatusColor(status: OutlineEntry['status']): string {
     case 'planned':
       return 'bg-primary/15 text-primary border-primary/30';
     case 'drafted':
-      return 'bg-info-500/15 text-info-400 border-info-500/30';
+      return 'bg-[var(--color-info-bg)] text-[var(--badge-ext-text)] border-[var(--badge-ext-border)]';
     case 'revised':
-      return 'bg-success-500/15 text-success-400 border-success-500/30';
+      return 'bg-[var(--color-success-bg)] text-[var(--badge-int-text)] border-[var(--badge-int-border)]';
     case 'locked':
-      return 'bg-error-500/15 text-error-400 border-error-500/30';
+      return 'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border-[var(--color-danger)]/30';
   }
 }
 

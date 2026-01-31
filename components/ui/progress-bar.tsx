@@ -11,10 +11,10 @@ export interface ProgressBarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const variantClasses: Record<string, string> = {
-  default: 'bg-success-500',
-  success: 'bg-success-500',
+  default: 'bg-[var(--color-success)]',
+  success: 'bg-[var(--color-success)]',
   warning: 'bg-primary',
-  danger: 'bg-error-500',
+  danger: 'bg-[var(--color-danger)]',
 };
 
 const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(

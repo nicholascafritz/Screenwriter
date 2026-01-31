@@ -16,33 +16,33 @@ const badgeVariants = cva(
         outline:
           'border border-border text-foreground bg-transparent',
         success:
-          'bg-success-500/15 text-success-400 border border-success-500/30',
+          'bg-[var(--color-success-bg)] text-[var(--badge-int-text)] border border-[var(--badge-int-border)]',
         warning:
           'bg-primary/15 text-primary border border-primary/30',
         error:
-          'bg-error-500/15 text-error-400 border border-error-500/30',
+          'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/30',
         info:
-          'bg-info-500/15 text-info-400 border border-info-500/30',
+          'bg-[var(--color-info-bg)] text-[var(--badge-ext-text)] border border-[var(--badge-ext-border)]',
         destructive:
-          'bg-error-500/15 text-error-400 border border-error-500/30',
+          'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/30',
         danger:
-          'bg-error-500/15 text-error-400 border border-error-500/30',
+          'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/30',
         status:
-          'bg-info-500/15 text-info-400 border border-info-500/30',
+          'bg-[var(--color-info-bg)] text-[var(--badge-ext-text)] border border-[var(--badge-ext-border)]',
         // Scene-specific badges
         int:
-          'bg-success-500/15 text-success-400 border border-success-500/30',
+          'bg-[var(--badge-int-bg)] text-[var(--badge-int-text)] border border-[var(--badge-int-border)]',
         ext:
-          'bg-info-500/15 text-info-400 border border-info-500/30',
+          'bg-[var(--badge-ext-bg)] text-[var(--badge-ext-text)] border border-[var(--badge-ext-border)]',
         mixed:
-          'bg-purple-500/15 text-purple-400 border border-purple-500/30',
+          'bg-[var(--badge-mixed-bg)] text-[var(--badge-mixed-text)] border border-[var(--badge-mixed-border)]',
         // Mode badges
         'mode-inline':
-          'bg-success-500/15 text-success-400 border border-success-500/30',
+          'bg-[var(--color-success-bg)] text-[var(--color-success)] border border-[var(--color-success)]/30',
         'mode-diff':
-          'bg-info-500/15 text-info-400 border border-info-500/30',
+          'bg-[var(--color-info-bg)] text-[var(--color-info)] border border-[var(--color-info)]/30',
         'mode-agent':
-          'bg-teal-500/15 text-teal-400 border border-teal-500/30',
+          'bg-[var(--teal-500)]/15 text-[var(--teal-400)] border border-[var(--teal-500)]/30',
         'mode-writers-room':
           'bg-primary/15 text-primary border border-primary/30',
       },
