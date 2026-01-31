@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProjectStore } from '@/lib/store/project';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useOutlineStore } from '@/lib/store/outline';
+import { useGuideChatStore } from '@/lib/store/guide-chat';
 import AuthGate from '@/components/auth/AuthGate';
 import GuideChat from '@/components/guide/GuideChat';
 import GuideSidebar from '@/components/guide/GuideSidebar';
@@ -19,33 +20,44 @@ export default function GuidePage() {
   const router = useRouter();
   const [phase, setPhase] = useState<GuidePhase>('chat');
   const [isFinalizingOutline, setIsFinalizingOutline] = useState(false);
+  const [isGeneratingScenes, setIsGeneratingScenes] = useState(false);
 
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
+  const userId = useProjectStore((s) => s.userId);
   const projectName = useProjectStore((s) => s.name);
   const loadForProject = useStoryBibleStore((s) => s.loadForProject);
 
-  // Guide context from project creation form (stored in sessionStorage).
-  const [guideContext, setGuideContext] = useState<{
-    projectTitle?: string;
-    genre?: string;
-    logline?: string;
-    notes?: string;
-  }>({});
+  // Guide chat store
+  const loadGuideSessions = useGuideChatStore((s) => s.loadSessionsForProject);
+  const setGuideContext = useGuideChatStore((s) => s.setGuideContext);
+  const resetGuideChat = useGuideChatStore((s) => s.reset);
 
   const bibleLoaded = useRef(false);
+  const guideLoaded = useRef(false);
 
-  // Load guide context from sessionStorage.
+  // Load guide context from sessionStorage on mount.
+  // This is used when creating a new project from the dashboard.
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem('screenwriter:guideContext');
       if (stored) {
-        setGuideContext(JSON.parse(stored));
+        const context = JSON.parse(stored);
+        setGuideContext({
+          projectTitle: context.projectTitle || projectName,
+          genre: context.genre,
+          logline: context.logline,
+          notes: context.notes,
+        });
+        // Clear sessionStorage after loading into store
         sessionStorage.removeItem('screenwriter:guideContext');
+      } else if (projectName) {
+        // No sessionStorage context, but we have a project name
+        setGuideContext({ projectTitle: projectName });
       }
     } catch {
       // Ignore parse errors.
     }
-  }, []);
+  }, [projectName, setGuideContext]);
 
   // Guard: redirect to home if no active project.
   useEffect(() => {
@@ -62,6 +74,23 @@ export default function GuidePage() {
       useOutlineStore.getState().loadForProject(activeProjectId);
     }
   }, [activeProjectId, loadForProject]);
+
+  // Load guide chat sessions for this project.
+  useEffect(() => {
+    if (activeProjectId && userId && !guideLoaded.current) {
+      guideLoaded.current = true;
+      loadGuideSessions(userId, activeProjectId);
+    }
+  }, [activeProjectId, userId, loadGuideSessions]);
+
+  // Reset guide chat when unmounting or switching projects
+  useEffect(() => {
+    return () => {
+      // Reset refs when component unmounts
+      bibleLoaded.current = false;
+      guideLoaded.current = false;
+    };
+  }, [activeProjectId]);
 
   // Watch for outline completion to auto-transition to summary.
   const outlineLength = useOutlineStore(
@@ -83,6 +112,7 @@ export default function GuidePage() {
 
   const handleRequestOutline = () => {
     setIsFinalizingOutline(true);
+    setIsGeneratingScenes(true);
     // Remove existing planned scenes before regeneration.
     const outlineStore = useOutlineStore.getState();
     const planned = outlineStore.outline?.scenes.filter(
@@ -92,6 +122,10 @@ export default function GuidePage() {
       outlineStore.removeScene(scene.id);
     }
   };
+
+  const handleStreamingComplete = useCallback(() => {
+    setIsGeneratingScenes(false);
+  }, []);
 
   const handleExit = () => {
     router.push('/editor');
@@ -138,20 +172,15 @@ export default function GuidePage() {
 
         {/* Main content */}
         {phase === 'summary' ? (
-          <GuideSummary />
+          <GuideSummary isGenerating={isGeneratingScenes} />
         ) : (
           <div className="flex flex-1 overflow-hidden">
             {/* Chat area (left 2/3) */}
             <div className="flex-1 overflow-hidden border-r border-border">
               <GuideChat
-                guideContext={{
-                  projectTitle: guideContext.projectTitle || projectName,
-                  genre: guideContext.genre,
-                  logline: guideContext.logline,
-                  notes: guideContext.notes,
-                }}
                 onRequestOutline={handleRequestOutline}
                 isFinalizingOutline={isFinalizingOutline}
+                onStreamingComplete={handleStreamingComplete}
               />
             </div>
 

@@ -162,6 +162,13 @@ function parseHeadingParts(heading: string): {
   location: string;
   timeOfDay: string;
 } {
+  // Scene locations should be uppercase - if contains lowercase letters,
+  // this is likely dialogue or action text that was incorrectly classified
+  // as a scene heading. Return empty to avoid showing garbage in the outline.
+  if (/[a-z]/.test(heading)) {
+    return { location: '', timeOfDay: '' };
+  }
+
   // Remove scene number annotation.
   let text = heading.replace(SCENE_NUMBER_RE, '').trim();
 

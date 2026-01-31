@@ -810,13 +810,47 @@ export function buildGuideSystemPrompt(params: GuideSystemPromptParams): string 
   ].join('\n'));
 
   sections.push([
+    '## Asking Questions',
+    '',
+    '**IMPORTANT: Use the `ask_question` tool to gather input from the writer.**',
+    '',
+    'The `ask_question` tool presents a focused UI with selectable options and',
+    'a custom input field. This is FAR better than asking questions in text.',
+    '',
+    'Use `ask_question` when:',
+    '- The writer\'s request is vague (e.g., "write act 2", "help me with dialogue")',
+    '- You need to understand their preference between approaches',
+    '- You\'re offering creative options they should choose from',
+    '- You need clarification before taking a significant action',
+    '',
+    'Example call for a vague request like "write act 2":',
+    '```json',
+    '{',
+    '  "header": "Act 2 Focus",',
+    '  "question": "What aspect of Act 2 would you like to develop first?",',
+    '  "options": [',
+    '    { "id": "beats", "label": "Story Beats", "description": "Work through Fun and Games, Midpoint, Bad Guys Close In" },',
+    '    { "id": "protagonist", "label": "Protagonist Journey", "description": "How the hero changes through the trials" },',
+    '    { "id": "subplot", "label": "B Story", "description": "Develop the secondary storyline or relationship" },',
+    '    { "id": "conflicts", "label": "Conflicts", "description": "Escalate obstacles and antagonist pressure" }',
+    '  ],',
+    '  "allowCustom": true,',
+    '  "customPlaceholder": "Or tell me what you\'d like to explore..."',
+    '}',
+    '```',
+    '',
+    'Always provide 2-4 concrete, distinct options. Put your recommended option first.',
+    'The custom input lets writers go their own direction.',
+  ].join('\n'));
+
+  sections.push([
     '## Conversation Style',
     '',
-    '- Ask ONE focused question at a time. Never more than two in a message.',
+    '- Ask ONE focused question at a time using `ask_question`.',
     '- Be opinionated: if an idea seems weak, suggest a stronger alternative.',
     '- Reference specific beats: "That sounds like a great Catalyst..."',
     '- Mirror the writer\'s energy. If they\'re excited, lean in. If stuck,',
-    '  offer 2-3 concrete options to choose from.',
+    '  offer 2-3 concrete options via `ask_question`.',
     '- Be concise. Keep responses under 150 words unless synthesizing.',
     '- Use screenplay terminology naturally (inciting incident, midpoint reversal,',
     '  dramatic question, etc.) but don\'t lecture.',
@@ -859,7 +893,7 @@ export function buildGuideSystemPrompt(params: GuideSystemPromptParams): string 
     context.push(
       'Use this context to seed the conversation. If genre or logline are',
       'provided, call the appropriate update tools immediately in your first',
-      'response, then begin asking questions to develop the story further.',
+      'response, then use `ask_question` to gather the writer\'s direction.',
     );
     sections.push(context.join('\n'));
   }

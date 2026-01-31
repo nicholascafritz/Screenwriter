@@ -4,6 +4,17 @@ import { useState, useRef, useEffect } from 'react';
 import type { ProjectSummary, ProjectStatus } from '@/lib/store/types';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { FileText, MoreVertical, Pencil, Copy, Trash2, Star, Archive, Film, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -122,8 +133,8 @@ export default function ProjectCard({
     setRenaming(false);
   };
 
-  // Derive display values
-  const structureProgress = project.sceneCount > 0 ? Math.min((project.sceneCount / 12) * 100, 100) : 0;
+  // Derive display values - progress based on page count toward typical feature length (110 pages)
+  const scriptProgress = project.pageCount > 0 ? Math.min((project.pageCount / 110) * 100, 100) : 0;
 
   // Context menu (shared between compact and card views)
   const contextMenu = (
@@ -176,17 +187,43 @@ export default function ProjectCard({
               {project.isArchived ? 'Unarchive' : 'Archive'}
             </button>
           )}
-          <button
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-[var(--color-danger-bg)] text-left text-danger"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(false);
-              onDelete(project.id);
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-[var(--color-danger-bg)] text-left text-danger"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete &ldquo;{project.name}&rdquo; and all its data
+                  including chat history, outline, and story bible.
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setMenuOpen(false)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete(project.id);
+                  }}
+                >
+                  Delete Project
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
     </div>
@@ -388,17 +425,17 @@ export default function ProjectCard({
           <span>{project.sceneCount} {project.sceneCount === 1 ? 'scene' : 'scenes'}</span>
         </div>
 
-        {/* Structure progress */}
+        {/* Script progress */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-              Structure Progress
+              Script Progress
             </span>
             <span className="text-xs text-muted-foreground">
-              {project.sceneCount}/12 beats
+              {project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}
             </span>
           </div>
-          <ProgressBar value={structureProgress} showShimmer={false} />
+          <ProgressBar value={scriptProgress} showShimmer={false} />
         </div>
 
         {/* Badges */}

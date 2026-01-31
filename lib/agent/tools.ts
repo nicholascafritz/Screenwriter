@@ -2024,7 +2024,8 @@ export function getToolsForMode(mode: string): ToolDefinition[] {
     ];
   }
   if (mode === 'story-guide') {
-    return GUIDE_TOOLS;
+    // Include question tools so guide can ask clarifying questions with focused UI
+    return [...GUIDE_TOOLS, ...QUESTION_TOOLS];
   }
   // Include todo and question tools for inline (Write), diff (Ask), and agent modes
   if (mode === 'inline' || mode === 'agent' || mode === 'diff') {

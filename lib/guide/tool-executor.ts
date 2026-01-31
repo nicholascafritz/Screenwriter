@@ -71,11 +71,24 @@ const toolHandlers: Record<
 
   add_character: (input) => {
     const store = useStoryBibleStore.getState();
-    store.addCharacter(input.name as string);
+    const bible = store.bible;
+    const inputName = (input.name as string) ?? '';
 
-    // Update with extra fields
-    const bible = useStoryBibleStore.getState().bible;
-    const char = bible?.characters.find((c) => c.name === input.name);
+    // Check for existing character (case-insensitive) to prevent duplicates
+    const existingChar = bible?.characters.find(
+      (c) => c.name.toLowerCase() === inputName.toLowerCase(),
+    );
+
+    // Only add if character doesn't already exist
+    if (!existingChar) {
+      store.addCharacter(inputName);
+    }
+
+    // Find character (existing or newly added) and update fields
+    const updatedBible = useStoryBibleStore.getState().bible;
+    const char = updatedBible?.characters.find(
+      (c) => c.name.toLowerCase() === inputName.toLowerCase(),
+    );
     if (char) {
       const updates: Record<string, string> = {};
       if (input.description) updates.description = input.description as string;
@@ -110,11 +123,25 @@ const toolHandlers: Record<
 
   add_location: (input) => {
     const store = useStoryBibleStore.getState();
-    store.addLocation(input.name as string);
+    const bible = store.bible;
+    const inputName = (input.name as string) ?? '';
 
+    // Check for existing location (case-insensitive) to prevent duplicates
+    const existingLoc = bible?.locations.find(
+      (l) => l.name.toLowerCase() === inputName.toLowerCase(),
+    );
+
+    // Only add if location doesn't already exist
+    if (!existingLoc) {
+      store.addLocation(inputName);
+    }
+
+    // Find location (existing or newly added) and update description
     if (input.description) {
-      const bible = useStoryBibleStore.getState().bible;
-      const loc = bible?.locations.find((l) => l.name === input.name);
+      const updatedBible = useStoryBibleStore.getState().bible;
+      const loc = updatedBible?.locations.find(
+        (l) => l.name.toLowerCase() === inputName.toLowerCase(),
+      );
       if (loc) {
         store.updateLocation(loc.id, {
           description: input.description as string,

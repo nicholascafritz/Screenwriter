@@ -1,36 +1,30 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { useStoryBibleStore } from '@/lib/store/story-bible';
 import { useProjectStore } from '@/lib/store/project';
+import { useGuideChatStore } from '@/lib/store/guide-chat';
+import { useAgentQuestionStore } from '@/lib/store/agent-questions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { executeGuideTool } from '@/lib/guide/tool-executor';
+import AgentQuestionPanel from '@/components/chat/AgentQuestionPanel';
+import type { AgentQuestion, QuestionResponse } from '@/lib/agent/question-tools';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface GuideMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 interface GuideChatProps {
-  /** Context from the project creation form. */
-  guideContext: {
-    projectTitle?: string;
-    genre?: string;
-    logline?: string;
-    notes?: string;
-  };
   /** Called when the user requests outline generation. */
   onRequestOutline: () => void;
   /** Whether the outline generation phase is active. */
   isFinalizingOutline: boolean;
+  /** Called when streaming completes (AI finishes responding). */
+  onStreamingComplete?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,16 +32,32 @@ interface GuideChatProps {
 // ---------------------------------------------------------------------------
 
 export default function GuideChat({
-  guideContext,
   onRequestOutline,
   isFinalizingOutline,
+  onStreamingComplete,
 }: GuideChatProps) {
-  const [messages, setMessages] = useState<GuideMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
+  // Store state
+  const messages = useGuideChatStore((s) => s.messages);
+  const hasStarted = useGuideChatStore((s) => s.hasStarted);
+  const guideContext = useGuideChatStore((s) => s.guideContext);
+  const addMessage = useGuideChatStore((s) => s.addMessage);
+  const updateLastMessage = useGuideChatStore((s) => s.updateLastMessage);
+  const setHasStarted = useGuideChatStore((s) => s.setHasStarted);
+  const persistCurrentSession = useGuideChatStore((s) => s.persistCurrentSession);
+
+  // Question panel state
+  const questionPending = useAgentQuestionStore((s) => s.isAwaitingResponse);
+  const setPendingQuestion = useAgentQuestionStore((s) => s.setPendingQuestion);
+
+  // Local state for input and loading
+  const [inputValue, setInputValue] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const voiceId = useProjectStore((s) => s.voiceId);
+
+  // Ref to hold the latest sendMessage function to avoid stale closures in callbacks
+  const sendMessageRef = useRef<(text: string) => Promise<void>>(undefined);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,11 +67,16 @@ export default function GuideChat({
     async (text: string) => {
       if (!text.trim() || isLoading) return;
 
-      const userMsg: GuideMessage = { role: 'user', content: text };
-      const updated = [...messages, userMsg];
-      setMessages(updated);
+      // Add user message to store
+      addMessage({ role: 'user', content: text });
       setInputValue('');
       setIsLoading(true);
+
+      // Build history from store messages
+      const history = [...messages, { role: 'user' as const, content: text }].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
       try {
         const response = await fetch('/api/chat', {
@@ -72,16 +87,13 @@ export default function GuideChat({
             mode: 'story-guide',
             voiceId,
             screenplay: '',
-            history: updated.map((m) => ({ role: m.role, content: m.content })),
+            history,
             guideContext,
           }),
         });
 
         if (!response.ok) {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'assistant', content: 'Error communicating with AI. Please try again.' },
-          ]);
+          addMessage({ role: 'assistant', content: 'Error communicating with AI. Please try again.' });
           setIsLoading(false);
           return;
         }
@@ -96,8 +108,8 @@ export default function GuideChat({
         let accumulated = '';
         let lineBuffer = '';
 
-        // Add placeholder assistant message.
-        setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+        // Add placeholder assistant message
+        addMessage({ role: 'assistant', content: '' });
 
         while (true) {
           const { done, value } = await reader.read();
@@ -122,19 +134,58 @@ export default function GuideChat({
 
               if (parsed.type === 'text' && typeof parsed.content === 'string') {
                 accumulated += parsed.content;
-                setMessages((prev) => {
-                  const msgs = [...prev];
-                  msgs[msgs.length - 1] = { role: 'assistant', content: accumulated };
-                  return msgs;
-                });
+                updateLastMessage(accumulated);
               }
 
               // Dispatch tool calls using the centralized executor.
               if (parsed.type === 'tool_call' && parsed.name && parsed.input) {
-                executeGuideTool(
-                  parsed.name as string,
-                  parsed.input as Record<string, unknown>,
-                );
+                // Handle ask_question tool specially - show the question UI
+                if (parsed.name === 'ask_question') {
+                  const input = parsed.input as {
+                    header?: string;
+                    question?: string;
+                    options?: Array<{ id: string; label: string; description?: string }>;
+                    multiSelect?: boolean;
+                    allowCustom?: boolean;
+                    customPlaceholder?: string;
+                  };
+
+                  if (input.header && input.question && input.options?.length) {
+                    const questionData: AgentQuestion = {
+                      id: `guide-q-${Date.now()}`,
+                      header: input.header,
+                      question: input.question,
+                      options: input.options,
+                      multiSelect: input.multiSelect,
+                      allowCustom: input.allowCustom ?? true,
+                      customPlaceholder: input.customPlaceholder,
+                    };
+
+                    // Set up the question with a callback that sends the response
+                    setPendingQuestion(questionData, (response: QuestionResponse) => {
+                      // Format response as a user message
+                      let responseText = '';
+                      if (response.selectedLabels.length > 0) {
+                        responseText = response.selectedLabels.join(', ');
+                      }
+                      if (response.customText) {
+                        responseText = responseText
+                          ? `${responseText}. ${response.customText}`
+                          : response.customText;
+                      }
+                      if (!responseText) {
+                        responseText = 'Skip this question';
+                      }
+                      // Send the response as a new message (use ref to avoid stale closure)
+                      sendMessageRef.current?.(responseText);
+                    });
+                  }
+                } else {
+                  executeGuideTool(
+                    parsed.name as string,
+                    parsed.input as Record<string, unknown>,
+                  );
+                }
               }
             } catch {
               // Skip non-JSON lines.
@@ -143,17 +194,24 @@ export default function GuideChat({
 
           if (done) break;
         }
+
+        // Persist session after streaming completes
+        await persistCurrentSession();
       } catch {
-        setMessages((prev) => [
-          ...prev.slice(0, -1),
-          { role: 'assistant', content: 'Connection error. Please try again.' },
-        ]);
+        // Update last message with error
+        updateLastMessage('Connection error. Please try again.');
       } finally {
         setIsLoading(false);
+        onStreamingComplete?.();
       }
     },
-    [messages, isLoading, voiceId, guideContext],
+    [messages, isLoading, voiceId, guideContext, addMessage, updateLastMessage, persistCurrentSession, onStreamingComplete, setPendingQuestion],
   );
+
+  // Keep the ref updated with the latest sendMessage function
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   const handleStartGuide = useCallback(() => {
     setHasStarted(true);
@@ -161,7 +219,7 @@ export default function GuideChat({
       ? `I want to develop a screenplay. Here's my initial concept: ${guideContext.logline}. Help me build this out using the Save the Cat beat sheet.`
       : 'Help me develop a screenplay from scratch using the Save the Cat beat sheet. Let\'s start with the core concept.';
     sendMessage(initialPrompt);
-  }, [sendMessage, guideContext]);
+  }, [sendMessage, guideContext, setHasStarted]);
 
   const handleGenerateOutline = useCallback(() => {
     onRequestOutline();
@@ -204,14 +262,14 @@ export default function GuideChat({
               onClick={handleStartGuide}
             >
               <Sparkles className="h-4 w-4" />
-              Start Story Development
+              {messages.length > 0 ? 'Continue Story Development' : 'Start Story Development'}
             </Button>
           </div>
         ) : (
           <div className="space-y-4 max-w-2xl mx-auto">
             {messages.map((msg, idx) => (
               <div
-                key={idx}
+                key={msg.id || idx}
                 className={`text-sm rounded-lg px-4 py-3 ${
                   msg.role === 'user'
                     ? 'bg-primary/10 text-foreground ml-12'
@@ -234,8 +292,17 @@ export default function GuideChat({
         )}
       </ScrollArea>
 
+      {/* Question Panel */}
+      {questionPending && (
+        <div className="shrink-0 p-4 border-t border-border">
+          <div className="max-w-2xl mx-auto">
+            <AgentQuestionPanel />
+          </div>
+        </div>
+      )}
+
       {/* Input area */}
-      {hasStarted && (
+      {hasStarted && !questionPending && (
         <div className="shrink-0 p-4 border-t border-border">
           {/* Generate outline button */}
           {completedBeats >= 5 && !isFinalizingOutline && (
